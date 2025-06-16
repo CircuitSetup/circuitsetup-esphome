@@ -4,11 +4,13 @@ debug:
 text_sensor:
   - platform: debug
     reset_reason:
+      id: reset_reason_sensor
       name: "Reboot Reason"
       entity_category: diagnostic
 
 sensor:
   - platform: debug
     free:
+      id: heap_free_sensor
       name: "Heap Free"
       entity_category: diagnostic

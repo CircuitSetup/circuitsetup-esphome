@@ -38,6 +38,7 @@ text_sensor:
     update_interval: never
   - platform: version
     name: ESPHome Version
+    id: esphome_version_sensor
     hide_timestamp: true
   - platform: template
     name: Project version

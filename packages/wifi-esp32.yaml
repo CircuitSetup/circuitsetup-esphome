@@ -31,6 +31,7 @@ sensor:
 text_sensor:
   - platform: wifi_info
     ip_address:
+      id: wifi_ip_address_sensor
       name: IP Address
       entity_category: diagnostic
   
