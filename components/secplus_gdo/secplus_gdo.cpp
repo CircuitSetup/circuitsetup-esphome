@@ -132,6 +132,7 @@ namespace secplus_gdo {
         };
 
         gdo_init(&gdo_conf);
+        gdo_get_status(&this->status_);
         if (this->start_gdo_) {
             gdo_start(gdo_event_handler, this);
             ESP_LOGI(TAG, "secplus GDO started!");

@@ -96,6 +96,7 @@ namespace secplus_gdo {
         void set_sync_state(bool synced);
 
     protected:
+        gdo_status_t                                 status_{};
         std::function<void(uint16_t)>                f_openings{nullptr};
         std::function<void(bool)>                    f_motion{nullptr};
         std::function<void(bool)>                    f_obstruction{nullptr};
