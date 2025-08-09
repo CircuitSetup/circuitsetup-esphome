@@ -19,11 +19,12 @@
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
 #include "inttypes.h"
+#include <functional>
 
 namespace esphome {
 namespace secplus_gdo {
 
-    static const char* const TAG = "secplus_gdo";
+    constexpr char TAG[] = "secplus_gdo";
 
     static void gdo_event_handler(const gdo_status_t* status, gdo_cb_event_t event, void *arg) {
         GDOComponent *gdo = static_cast<GDOComponent *>(arg);
@@ -118,8 +119,8 @@ namespace secplus_gdo {
     void GDOComponent::setup() {
         // Set the toggle only state and control here because we cannot guarantee the cover instance was created before the switch
         this->door_->set_toggle_only(this->toggle_only_switch_->state);
-        this->toggle_only_switch_->set_control_function(std::bind(&esphome::secplus_gdo::GDODoor::set_toggle_only,
-                                                        this->door_, std::placeholders::_1));
+        this->toggle_only_switch_->set_control_function(
+            std::bind_front(&esphome::secplus_gdo::GDODoor::set_toggle_only, this->door_));
 
         gdo_config_t gdo_conf = {
             .uart_num = UART_NUM_1,
@@ -131,13 +132,12 @@ namespace secplus_gdo {
         };
 
         gdo_init(&gdo_conf);
-        gdo_get_status(&this->status_);
         if (this->start_gdo_) {
             gdo_start(gdo_event_handler, this);
             ESP_LOGI(TAG, "secplus GDO started!");
         } else {
             // check every 500ms for readiness before starting GDO
-            this->set_interval("gdo_start", 500, [=]() {
+            this->set_interval("gdo_start", 500, [this]() {
                 if (this->start_gdo_) {
                     gdo_start(gdo_event_handler, this);
                     ESP_LOGI(TAG, "secplus GDO started!");

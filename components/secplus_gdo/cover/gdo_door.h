@@ -28,8 +28,8 @@ namespace secplus_gdo {
 using namespace esphome::cover;
     class GDODoor : public cover::Cover, public Component {
     public:
-        cover::CoverTraits get_traits() override {
-            auto traits = CoverTraits();
+        [[nodiscard]] cover::CoverTraits get_traits() override {
+            CoverTraits traits;
             traits.set_supports_stop(true);
             traits.set_supports_toggle(true);
             traits.set_supports_position(true);
@@ -49,7 +49,7 @@ using namespace esphome::cover;
         }
 
         void do_action(const cover::CoverCall& call);
-        void do_action_after_warning(const cover::CoverCall& call);
+        void do_action_after_warning(cover::CoverCall call);
         void set_pre_close_warning_duration(uint32_t ms) { this->pre_close_duration_ = ms; }
         void set_toggle_only(bool val) { this->toggle_only_ = val; }
         void set_state(gdo_door_state_t state, float position);
