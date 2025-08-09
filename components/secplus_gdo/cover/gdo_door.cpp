@@ -24,9 +24,7 @@ void GDODoor::set_state(gdo_door_state_t state, float position) {
         }
     }
 
-    float prev_position = this->position;
-
-    if (this->state_ == state && prev_position == position) {
+    if (this->state_ == state && this->position == position) {
         return;
     }
 
@@ -60,7 +58,7 @@ void GDODoor::set_state(gdo_door_state_t state, float position) {
     }
     
     #ifdef USE_MQTT // if MQTT component is enabled, do not publish the same state more than once
-    if (this->state_ == state && this->current_operation == this->prev_operation && prev_position == this->position) {
+    if (this->state_ == state && this->current_operation == this->prev_operation) {
         return;
     }
     #endif
