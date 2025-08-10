@@ -8,12 +8,13 @@ namespace secplus_gdo {
 
     class CoverClosingStartTrigger : public Trigger<> {
     public:
-        CoverClosingStartTrigger(GDODoor* gdo_door) {}
+        explicit CoverClosingStartTrigger([[maybe_unused]] GDODoor* gdo_door) {}
     };
 
     class CoverClosingEndTrigger : public Trigger<> {
     public:
-        CoverClosingEndTrigger(GDODoor* gdo_door) {}
+        explicit CoverClosingEndTrigger([[maybe_unused]] GDODoor* gdo_door) {}
     };
 } // namespace secplus_gdo
 } // namespace esphome
+

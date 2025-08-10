@@ -26,6 +26,7 @@
 #include "light/gdo_light.h"
 #include "lock/gdo_lock.h"
 #include "gdo.h"
+#include <utility>
 
 namespace esphome {
 namespace secplus_gdo {
@@ -38,30 +39,30 @@ namespace secplus_gdo {
         void start_gdo() { start_gdo_ = true; }
 
         // Use Late priority so we do not start the GDO lib until all saved preferences are loaded
-        float get_setup_priority() const override { return setup_priority::BEFORE_CONNECTION; }
+        [[nodiscard]] float get_setup_priority() const override { return setup_priority::BEFORE_CONNECTION; }
 
         void register_protocol_select(GDOSelect *select) { this->protocol_select_ = select; }
         void set_protocol_state(gdo_protocol_type_t protocol) { if (this->protocol_select_) {
             this->protocol_select_->update_state(protocol); }
         }
 
-        void register_motion(std::function<void(bool)> f) { f_motion = f; }
+        void register_motion(std::function<void(bool)> &&f) { f_motion = std::move(f); }
         void set_motion_state(gdo_motion_state_t state) { if (f_motion) { f_motion(state == GDO_MOTION_STATE_DETECTED); } }
 
-        void register_obstruction(std::function<void(bool)> f) { f_obstruction = f; }
+        void register_obstruction(std::function<void(bool)> &&f) { f_obstruction = std::move(f); }
         void set_obstruction(gdo_obstruction_state_t state) {
             if (f_obstruction) { f_obstruction(state == GDO_OBSTRUCTION_STATE_OBSTRUCTED); }
         }
 
-        void register_button(std::function<void(bool)> f) { f_button = f; }
+        void register_button(std::function<void(bool)> &&f) { f_button = std::move(f); }
         void set_button_state(gdo_button_state_t state) { if (f_button) { f_button(state == GDO_BUTTON_STATE_PRESSED); } }
 
-        void register_motor(std::function<void(bool)> f) { f_motor = f; }
+        void register_motor(std::function<void(bool)> &&f) { f_motor = std::move(f); }
         void set_motor_state(gdo_motor_state_t state) { if (f_motor) { f_motor(state == GDO_MOTOR_STATE_ON); } }
 
-        void register_sync(std::function<void(bool)> f) { f_sync = f; }
+        void register_sync(std::function<void(bool)> &&f) { f_sync = std::move(f); }
 
-        void register_openings(std::function<void(uint16_t)> f) { f_openings = f; }
+        void register_openings(std::function<void(uint16_t)> &&f) { f_openings = std::move(f); }
         void set_openings(uint16_t openings) { if (f_openings) { f_openings(openings); } }
 
         void register_door(GDODoor *door) { this->door_ = door; }
