@@ -80,6 +80,7 @@ namespace secplus_gdo {
             break;
         case GDO_CB_EVENT_BATTERY:
             ESP_LOGI(TAG, "Battery: %s", gdo_battery_state_to_string(status->battery));
+            gdo->set_battery_state(status->battery);
             break;
         case GDO_CB_EVENT_BUTTON:
             ESP_LOGI(TAG, "Button: %s", gdo_button_state_to_string(status->button));
