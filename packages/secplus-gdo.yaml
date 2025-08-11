@@ -36,6 +36,14 @@ sensor:
     unit_of_measurement: openings
     icon: mdi:open-in-app
 
+text_sensor:
+  - platform: secplus_gdo
+    secplus_gdo_id: cs_gdo
+    id: gdo_battery
+    name: $garage_battery_name
+    type: battery
+    icon: mdi:battery
+
 lock:
   - platform: secplus_gdo
     id: gdo_lock_remotes

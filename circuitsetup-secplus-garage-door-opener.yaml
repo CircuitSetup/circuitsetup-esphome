@@ -65,6 +65,7 @@ substitutions:
   garage_remote_2_name: Remote 2
   garage_remote_3_name: Remote 3
   garage_sync_name: Synced
+  garage_battery_name: Battery
   temp_update_interval: 60s
   temp_adjust: "0.8825" # 1-0.1175 - 11.75% decrease
   dew_point_offset: "1.3" # Offset in °F to correct sensor's lower dew point reading

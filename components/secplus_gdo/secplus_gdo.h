@@ -28,6 +28,7 @@
 #include "gdo.h"
 #include <utility>
 #include <array>
+#include <string>
 
 namespace esphome {
 namespace secplus_gdo {
@@ -69,6 +70,13 @@ namespace secplus_gdo {
         void set_motor_state(gdo_motor_state_t state) { if (f_motor) { f_motor(state == GDO_MOTOR_STATE_ON); } }
 
         void register_sync(std::function<void(bool)> &&f) { f_sync = std::move(f); }
+
+        void register_battery(std::function<void(std::string)> &&f) { f_battery = std::move(f); }
+        void set_battery_state(gdo_battery_state_t state) {
+            if (f_battery && state != GDO_BATT_STATE_UNKNOWN) {
+                f_battery(gdo_battery_state_to_string(state));
+            }
+        }
 
         void register_openings(std::function<void(uint16_t)> &&f) { f_openings = std::move(f); }
         void set_openings(uint16_t openings) { if (f_openings) { f_openings(openings); } }
@@ -124,6 +132,7 @@ namespace secplus_gdo {
         GDOSwitch*                                   learn_switch_{nullptr};
         GDOSwitch*                                   toggle_only_switch_{nullptr};
         bool                                         start_gdo_{false};
+        std::function<void(std::string)>             f_battery{nullptr};
 
     }; // GDOComponent
 } // namespace secplus_gdo
