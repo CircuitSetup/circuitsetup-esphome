@@ -42,3 +42,15 @@ cover:
 * **pre_close_warning_start** (_Optional_, Action): Action(s) to execute the pre-close warning
 * **pre_close_warning_end** (_Optional_, Action): Action(s) to execute when the pre-close warning stops
 * **toggle_only** (_Optional_, boolean)_: When true, all open/close commands are sent as a toggle door actions to the garage opener. This is a compatibility fix for some openers, such as some Merlin brand openers that are known to only respond to toggle commands and don't respond to discrete open/close commands.
+
+### Binary Sensors
+
+```yaml
+binary_sensor:
+  - platform: secplus_gdo
+    type: wireless_remote
+    secplus_gdo_id: cs_gdo
+    name: Wireless Remote
+```
+
+* **type** (**Required**, string): Sensor type. Use `wireless_remote` to detect when the door is triggered by a wireless remote.

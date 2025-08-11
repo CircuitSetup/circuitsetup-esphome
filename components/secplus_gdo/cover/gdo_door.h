@@ -25,6 +25,8 @@
 namespace esphome {
 namespace secplus_gdo {
 
+class GDOComponent;
+
 using namespace esphome::cover;
     class GDODoor : public cover::Cover, public Component {
     public:
@@ -53,6 +55,7 @@ using namespace esphome::cover;
         void set_pre_close_warning_duration(uint32_t ms) { this->pre_close_duration_ = ms; }
         void set_toggle_only(bool val) { this->toggle_only_ = val; }
         void set_state(gdo_door_state_t state, float position);
+        void set_parent(GDOComponent *parent) { this->parent_ = parent; }
 
     protected:
         void control(const cover::CoverCall& call);
@@ -66,6 +69,7 @@ using namespace esphome::cover;
         CoverOperation           prev_operation{COVER_OPERATION_IDLE};
         gdo_door_state_t         state_{GDO_DOOR_STATE_UNKNOWN};
         bool                     synced_{false};
+        GDOComponent            *parent_{nullptr};
     };
 } // namespace secplus_gdo
 } // namespace esphome

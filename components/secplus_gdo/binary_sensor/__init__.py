@@ -37,6 +37,7 @@ TYPES = {
     "motor": "register_motor",
     "button": "register_button",
     "sync": "register_sync",
+    "wireless_remote": "register_wireless_remote",
 }
 
 
@@ -59,3 +60,4 @@ async def to_code(config):
     fcall = str(parent) + "->" + str(TYPES[config[CONF_TYPE]])
     text = fcall + "(std::bind(&" + str(GDOBinarySensor) + "::publish_state," + str(config[CONF_ID]) + ",std::placeholders::_1))"
     cg.add((cg.RawExpression(text)))
+
