@@ -27,6 +27,7 @@
 #include "lock/gdo_lock.h"
 #include "gdo.h"
 #include <utility>
+#include <array>
 #include <string>
 
 namespace esphome {
@@ -57,6 +58,13 @@ namespace secplus_gdo {
 
         void register_button(std::function<void(bool)> &&f) { f_button = std::move(f); }
         void set_button_state(gdo_button_state_t state) { if (f_button) { f_button(state == GDO_BUTTON_STATE_PRESSED); } }
+
+        void register_remote_button(uint8_t slot, std::function<void(bool)> &&f) {
+            if (slot >= 1 && slot <= 3) {
+                f_remote_buttons_[slot - 1] = std::move(f);
+            }
+        }
+        void set_remote_button_state(uint32_t remote_id, gdo_button_state_t state);
 
         void register_motor(std::function<void(bool)> &&f) { f_motor = std::move(f); }
         void set_motor_state(gdo_motor_state_t state) { if (f_motor) { f_motor(state == GDO_MOTOR_STATE_ON); } }
@@ -111,6 +119,8 @@ namespace secplus_gdo {
         std::function<void(bool)>                    f_button{nullptr};
         std::function<void(bool)>                    f_motor{nullptr};
         std::function<void(bool)>                    f_sync{nullptr};
+        std::array<std::function<void(bool)>,3>      f_remote_buttons_{};
+        std::array<uint32_t,3>                       remote_ids_{};
         GDODoor*                                     door_{nullptr};
         GDOLight*                                    light_{nullptr};
         GDOLock*                                     lock_{nullptr};
