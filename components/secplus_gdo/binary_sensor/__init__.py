@@ -31,14 +31,12 @@ GDOBinarySensor = secplus_gdo_ns.class_(
 )
 
 CONF_TYPE = "type"
-CONF_REMOTE = "remote"
 TYPES = {
     "motion": "register_motion",
     "obstruction": "register_obstruction",
     "motor": "register_motor",
     "button": "register_button",
     "sync": "register_sync",
-    "remote_button": "register_remote_button",
 }
 
 
@@ -47,7 +45,6 @@ CONFIG_SCHEMA = (
     .extend(
         {
             cv.Required(CONF_TYPE): cv.enum(TYPES, lower=True),
-            cv.Optional(CONF_REMOTE): cv.int_range(1, 3),
         }
     )
     .extend(SECPLUS_GDO_CONFIG_SCHEMA)
@@ -59,12 +56,6 @@ async def to_code(config):
     await binary_sensor.register_binary_sensor(var, config)
     await cg.register_component(var, config)
     parent = await cg.get_variable(config[CONF_SECPLUS_GDO_ID])
-    if config[CONF_TYPE] == "remote_button":
-        remote = config[CONF_REMOTE]
-        text = (
-            f"{parent}->register_remote_button({remote}, std::bind(&{GDOBinarySensor}::publish_state,{config[CONF_ID]},std::placeholders::_1))"
-        )
-    else:
-        fcall = str(parent) + "->" + str(TYPES[config[CONF_TYPE]])
-        text = fcall + "(std::bind(&" + str(GDOBinarySensor) + "::publish_state," + str(config[CONF_ID]) + ",std::placeholders::_1))"
-    cg.add(cg.RawExpression(text))
+    fcall = str(parent) + "->" + str(TYPES[config[CONF_TYPE]])
+    text = fcall + "(std::bind(&" + str(GDOBinarySensor) + "::publish_state," + str(config[CONF_ID]) + ",std::placeholders::_1))"
+    cg.add((cg.RawExpression(text)))

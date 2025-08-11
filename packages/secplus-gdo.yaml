@@ -75,24 +75,6 @@ binary_sensor:
     secplus_gdo_id: cs_gdo
     type: button
   - platform: secplus_gdo
-    name: $garage_remote_1_name
-    id: gdo_remote_1
-    secplus_gdo_id: cs_gdo
-    type: remote_button
-    remote: 1
-  - platform: secplus_gdo
-    name: $garage_remote_2_name
-    id: gdo_remote_2
-    secplus_gdo_id: cs_gdo
-    type: remote_button
-    remote: 2
-  - platform: secplus_gdo
-    name: $garage_remote_3_name
-    id: gdo_remote_3
-    secplus_gdo_id: cs_gdo
-    type: remote_button
-    remote: 3
-  - platform: secplus_gdo
     name: $garage_sync_name
     id: gdo_synced
     secplus_gdo_id: cs_gdo
