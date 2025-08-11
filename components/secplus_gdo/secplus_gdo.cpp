@@ -83,12 +83,8 @@ namespace secplus_gdo {
             gdo->set_battery_state(status->battery);
             break;
         case GDO_CB_EVENT_BUTTON:
-            ESP_LOGI(TAG, "Button: %s remote: %" PRIu32, gdo_button_state_to_string(status->button), status->remote_id);
-            if (status->remote_id != 0) {
-                gdo->set_remote_button_state(status->remote_id, status->button);
-            } else {
-                gdo->set_button_state(status->button);
-            }
+            ESP_LOGI(TAG, "Button: %s", gdo_button_state_to_string(status->button));
+            gdo->set_button_state(status->button);
             break;
         case GDO_CB_EVENT_MOTOR:
             ESP_LOGI(TAG, "Motor: %s", gdo_motor_state_to_string(status->motor));
@@ -173,24 +169,6 @@ namespace secplus_gdo {
 
         if (this->f_sync) {
             this->f_sync(synced);
-        }
-    }
-
-    void GDOComponent::set_remote_button_state(uint32_t remote_id, gdo_button_state_t state) {
-        if (remote_id == 0) {
-            return;
-        }
-        for (size_t i = 0; i < this->f_remote_buttons_.size(); i++) {
-            if (this->remote_ids_[i] == 0) {
-                this->remote_ids_[i] = remote_id;
-            }
-            if (this->remote_ids_[i] == remote_id) {
-                auto &cb = this->f_remote_buttons_[i];
-                if (cb) {
-                    cb(state == GDO_BUTTON_STATE_PRESSED);
-                }
-                break;
-            }
         }
     }
 

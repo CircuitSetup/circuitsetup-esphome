@@ -61,9 +61,6 @@ substitutions:
   garage_obstruction_name: Obstruction
   garage_motor_name: Motor
   garage_button_name: Wall Button
-  garage_remote_1_name: Remote 1
-  garage_remote_2_name: Remote 2
-  garage_remote_3_name: Remote 3
   garage_sync_name: Synced
   garage_battery_name: Battery
   temp_update_interval: 60s
