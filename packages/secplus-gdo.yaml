@@ -75,6 +75,12 @@ binary_sensor:
     secplus_gdo_id: cs_gdo
     type: button
   - platform: secplus_gdo
+    name: $garage_wireless_remote_name
+    id: gdo_wireless_remote
+    secplus_gdo_id: cs_gdo
+    type: wireless_remote
+    icon: mdi:remote
+  - platform: secplus_gdo
     name: $garage_sync_name
     id: gdo_synced
     secplus_gdo_id: cs_gdo

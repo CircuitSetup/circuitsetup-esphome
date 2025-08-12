@@ -1,5 +1,6 @@
 #include "esphome/core/log.h"
 #include "gdo_door.h"
+#include "../secplus_gdo.h"
 #include <utility>
 
 namespace esphome {
@@ -93,6 +94,10 @@ void GDODoor::do_action_after_warning(cover::CoverCall call) {
 }
 
 void GDODoor::do_action(const cover::CoverCall& call) {
+    if (this->parent_) {
+        this->parent_->notify_cover_command();
+    }
+
     if (call.get_stop()) {
         ESP_LOGD(TAG, "Sending STOP action");
         gdo_door_stop();
