@@ -1,6 +1,6 @@
 #include "esphome/core/log.h"
 #include "gdo_door.h"
-#include "secplus_gdo.h"
+#include "../secplus_gdo.h"
 #include <utility>
 
 namespace esphome {
