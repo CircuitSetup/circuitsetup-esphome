@@ -25,12 +25,7 @@ void GDODoor::set_state(gdo_door_state_t state, float position) {
         }
     }
 
-    if (this->state_ == state && this->position == position) {
-        return;
-    }
-
     ESP_LOGI(TAG, "Door state: %s, position: %.0f%%", gdo_door_state_to_string(state), position * 100.0f);
-
     this->prev_operation = this->current_operation; // save the previous operation
 
     switch (state) {
@@ -50,20 +45,18 @@ void GDODoor::set_state(gdo_door_state_t state, float position) {
         this->current_operation = COVER_OPERATION_CLOSING;
         this->position = position;
         break;
-    case GDO_DOOR_STATE_STOPPED: // falls through                
+    case GDO_DOOR_STATE_STOPPED: // falls through
     case GDO_DOOR_STATE_MAX: // falls through
     default:
         this->current_operation = COVER_OPERATION_IDLE;
         this->position = position;
         break;
     }
-    
+
     #ifdef USE_MQTT // if MQTT component is enabled, do not publish the same state more than once
-    if (this->state_ == state && this->current_operation == this->prev_operation) {
-        return;
-    }
+    if (this->state_ == state && this->current_operation == this->prev_operation) { return; }
     #endif
-    
+
     this->publish_state(false);
     this->state_ = state;
 }
@@ -75,7 +68,6 @@ void GDODoor::do_action_after_warning(cover::CoverCall call) {
     }
 
     this->set_state(GDO_DOOR_STATE_CLOSING, this->position);
-    this->publish_state(false); // publish state to acknowledge command was received
 
     ESP_LOGD(TAG, "WARNING for %dms", this->pre_close_duration_);
     if (this->pre_close_start_trigger) {
@@ -97,20 +89,10 @@ void GDODoor::do_action(const cover::CoverCall& call) {
     if (this->parent_) {
         this->parent_->notify_cover_command();
     }
-
-    if (call.get_stop()) {
-        ESP_LOGD(TAG, "Sending STOP action");
-        gdo_door_stop();
-    }
-
     if (call.get_toggle()) {
-        if (this->position == COVER_CLOSED) {
-            this->set_state(GDO_DOOR_STATE_OPENING, this->position);
-        } else if (this->position == COVER_OPEN) {
-            this->set_state(GDO_DOOR_STATE_CLOSING, this->position);
-        }
         ESP_LOGD(TAG, "Sending TOGGLE action");
         gdo_door_toggle();
+        return;
     }
 
     if (call.get_position().has_value()) {
@@ -132,8 +114,6 @@ void GDODoor::do_action(const cover::CoverCall& call) {
                 ESP_LOGD(TAG, "Sending OPEN action");
                 gdo_door_open();
             }
-
-            this->set_state(GDO_DOOR_STATE_OPENING, this->position);
         } else if (pos == COVER_CLOSED) {
             if (this->toggle_only_) {
                 ESP_LOGD(TAG, "Sending TOGGLE action");
@@ -151,8 +131,6 @@ void GDODoor::do_action(const cover::CoverCall& call) {
                 ESP_LOGD(TAG, "Sending CLOSE action");
                 gdo_door_close();
             }
-
-            this->set_state(GDO_DOOR_STATE_CLOSING, this->position);
         } else {
             ESP_LOGD(TAG, "Moving garage door to position %f", pos);
             gdo_door_move_to_target(10000 - (pos * 10000));
@@ -175,9 +153,11 @@ void GDODoor::control(const cover::CoverCall& call) {
             if (this->pre_close_end_trigger) {
                 this->pre_close_end_trigger->trigger();
             }
+            this->set_state(GDO_DOOR_STATE_STOPPED, this->position);
         }
-        this->target_position_ = this->position;
-        this->do_action(call);
+
+        gdo_door_stop();
+        return;
     }
 
     if (call.get_toggle()) {
@@ -189,6 +169,8 @@ void GDODoor::control(const cover::CoverCall& call) {
             this->target_position_ = COVER_OPEN;
             this->do_action(call);
         }
+
+        return;
     }
 
     if (call.get_position().has_value()) {
