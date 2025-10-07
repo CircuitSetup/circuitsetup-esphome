@@ -167,10 +167,11 @@ dashboard_import:
 # LOGGER
 # more: https://esphome.io/components/logger.html
 logger:
+  hardware_uart: UART0     # force CP2102N/TTL header
+  baud_rate: 115200
+  deassert_rts_dtr: true   # avoids missing boot logs on auto-reset boards
   level: VERBOSE
   logs:
-    esp-idf: VERBOSE
-    api: VERBOSE
     api.service: DEBUG
     esp32_ble: DEBUG
     esp32_ble_server: DEBUG
