@@ -172,6 +172,8 @@ logger:
   deassert_rts_dtr: true   # avoids missing boot logs on auto-reset boards
   level: VERBOSE
   logs:
+    esp-idf: DEBUG
+    api: DEBUG
     api.service: DEBUG
     esp32_ble: DEBUG
     esp32_ble_server: DEBUG
