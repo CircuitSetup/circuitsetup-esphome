@@ -50,7 +50,7 @@ substitutions:
   name: circuitsetup-gdo
   friendly_name: Garage Door Opener
   project_name: circuitsetup.secplus-garage-door-opener
-  project_version: "1.3"
+  project_version: "1.4"
   garage_door_cover_name: Garage Door
   garage_light_name: Garage Light
   garage_openings_name: Garage Openings
