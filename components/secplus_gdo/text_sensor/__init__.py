@@ -51,5 +51,10 @@ async def to_code(config):
     await cg.register_component(var, config)
     parent = await cg.get_variable(config[CONF_SECPLUS_GDO_ID])
     fcall = str(parent) + "->" + str(TYPES[config[CONF_TYPE]])
-    text = fcall + "(std::bind(&" + str(GDOTextSensor) + "::publish_state," + str(config[CONF_ID]) + ",std::placeholders::_1))"
+    text = (
+        fcall
+        + "([=](std::string value) { "
+        + str(config[CONF_ID])
+        + "->publish_state(value); })"
+    )
     cg.add(cg.RawExpression(text))
