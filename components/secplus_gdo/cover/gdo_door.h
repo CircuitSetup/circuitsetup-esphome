@@ -55,6 +55,7 @@ using namespace esphome::cover;
         void set_pre_close_warning_duration(uint32_t ms) { this->pre_close_duration_ = ms; }
         void set_toggle_only(bool val) { this->toggle_only_ = val; }
         void set_state(gdo_door_state_t state, float position);
+        void cancel_pre_close_warning();
         void set_parent(GDOComponent *parent) { this->parent_ = parent; }
 
     protected:
