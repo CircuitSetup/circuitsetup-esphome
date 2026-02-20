@@ -9,61 +9,80 @@
 
 #include "esphome/components/select/select.h"
 #include "esphome/core/component.h"
+#include "esphome/core/log.h"
 #include "esphome/core/preferences.h"
-#include "esphome/core/application.h"
-#include "../secplus_gdo.h"
-#include "gdo.h"
+#include "../gdolib/gdo.h"
 
 namespace esphome {
 namespace secplus_gdo {
 
-    class GDOSelect : public select::Select, public Component {
-    public:
-        void setup() override {
-            std::string value;
-            size_t index;
-            this->pref_ = global_preferences->make_preference<size_t>(this->get_object_id_hash());
-            if (!this->pref_.load(&index)) {
-                value = this->initial_option_;
-            } else if (!this->has_index(index)) {
-                value = this->initial_option_;
-            } else {
-                value = this->at(index).value();
-            }
+class GDOSelect : public select::Select, public Component {
+ public:
+  void setup() override {
+    size_t index = 0;
+    this->pref_ = this->make_entity_preference<size_t>();
+    if (!this->pref_.load(&index) || !this->has_index(index)) {
+      auto initial_index = this->index_of(this->initial_option_);
+      index = initial_index.has_value() ? initial_index.value() : 0;
+    }
 
-            this->control(value);
-        }
+    this->selected_index_ = index;
+    this->has_selection_ = true;
+    this->publish_state(index);
+  }
 
-        void set_initial_option(const std::string &initial_option) { this->initial_option_ = initial_option; }
+  void set_initial_option(const std::string &initial_option) { this->initial_option_ = initial_option; }
 
-        void update_state(gdo_protocol_type_t protocol) {
-            if (this->has_index(protocol)) {
-                std::string value = this->at(protocol).value();
-                auto current_option = this->current_option();
-                if (this->has_state() && value != this->current_option()) {
-                    this->pref_.save(&protocol);
-                }
+  void update_state(gdo_protocol_type_t protocol) {
+    size_t protocol_idx = static_cast<size_t>(protocol);
+    if (!this->has_index(protocol_idx)) {
+      return;
+    }
 
-                this->publish_state(value);
-            }
-        }
+    if (this->has_selection_ && this->selected_index_ == protocol_idx) {
+      return;
+    }
 
-    protected:
-        void control(const std::string &value) override {
-            auto idx = this->index_of(value);
-            if (idx.has_value()) {
-                gdo_protocol_type_t protocol = static_cast<gdo_protocol_type_t>(idx.value());
-                this->update_state(protocol);
-                if (gdo_set_protocol(protocol) != ESP_OK) {
-                    vTaskDelay(pdMS_TO_TICKS(100));
-                    App.safe_reboot();
-                }
-            }
-        }
+    this->selected_index_ = protocol_idx;
+    this->has_selection_ = true;
+    this->pref_.save(&protocol_idx);
+    this->publish_state(protocol_idx);
+  }
 
-        std::string initial_option_;
-        ESPPreferenceObject pref_;
-    };
+  bool has_selected_protocol() const { return this->has_selection_; }
 
-} // namespace secplus_gdo
-} // namespace esphome
+  gdo_protocol_type_t get_selected_protocol() const {
+    if (!this->has_selection_ || !this->has_index(this->selected_index_)) {
+      return (gdo_protocol_type_t) 0;
+    }
+    return static_cast<gdo_protocol_type_t>(this->selected_index_);
+  }
+
+ protected:
+  void control(size_t index) override {
+    if (!this->has_index(index)) {
+      ESP_LOGW("gdo_select", "Invalid protocol index: %u", static_cast<unsigned int>(index));
+      return;
+    }
+
+    auto protocol = static_cast<gdo_protocol_type_t>(index);
+    esp_err_t err = gdo_set_protocol(protocol);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+      ESP_LOGW("gdo_select", "Failed to set protocol: %s", esp_err_to_name(err));
+      return;
+    }
+
+    this->selected_index_ = index;
+    this->has_selection_ = true;
+    this->pref_.save(&index);
+    this->publish_state(index);
+  }
+
+  std::string initial_option_{"auto"};
+  ESPPreferenceObject pref_{};
+  size_t selected_index_{0};
+  bool has_selection_{false};
+};
+
+}  // namespace secplus_gdo
+}  // namespace esphome
