@@ -32,9 +32,9 @@
 #include "esphome/components/wifi/wifi_component.h"
 #endif
 
+#include "gdo.h"
 #include "binary_sensor/gdo_binary_sensor.h"
 #include "cover/gdo_door.h"
-#include "gdolib/gdo.h"
 #include "light/gdo_light.h"
 #include "lock/gdo_lock.h"
 #include "number/gdo_number.h"
