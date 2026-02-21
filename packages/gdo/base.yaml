@@ -1,8 +1,3 @@
-esphome:
-  platformio_options:
-    lib_deps:
-      - https://github.com/CircuitSetup/gdolib.git#09f439db9ff8fde51f4de5d5686a9647ddb8ecd6
-
 secplus_gdo:
   id: cs_gdo
   input_gdo_pin: ${uart_rx_pin}

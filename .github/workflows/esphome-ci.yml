@@ -12,15 +12,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Checkout gdolib from YAML dependency
+      - name: Checkout pinned gdolib
         run: |
-          GDOLIB_DEP="$(grep -Eo 'https://github.com/CircuitSetup/gdolib.git(#.+)?' packages/gdo/base.yaml | head -n1)"
-          GDOLIB_URL="${GDOLIB_DEP%%#*}"
-          GDOLIB_REF="${GDOLIB_DEP##*#}"
-          if [ "$GDOLIB_REF" = "$GDOLIB_DEP" ]; then
-            GDOLIB_REF="master"
-          fi
-          git clone "$GDOLIB_URL" "$RUNNER_TEMP/gdolib"
+          GDOLIB_REF="$(cat components/secplus_gdo/gdolib_ref.txt)"
+          git clone https://github.com/CircuitSetup/gdolib.git "$RUNNER_TEMP/gdolib"
           git -C "$RUNNER_TEMP/gdolib" checkout --detach "$GDOLIB_REF"
 
       - name: Build and run secplus replay test
