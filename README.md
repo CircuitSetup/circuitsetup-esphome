@@ -4,8 +4,8 @@ ESPHome configurations and external components for CircuitSetup garage door hard
 
 ## Highlights in this update
 
-- `gdolib` is now sourced directly from `https://github.com/CircuitSetup/gdolib` (pinned by `components/secplus_gdo/gdolib_ref.txt`).
-- No `platformio_options` are required for the normal Security+ path.
+- `gdolib` is sourced from `https://github.com/CircuitSetup/gdolib` via YAML package config (`packages/gdo/base.yaml`).
+- `secplus_gdo` no longer hardcodes gdolib dependency wiring in component code.
 - Core operations are now declarative via real component actions and buttons:
   - Sync/resync opener
   - Restart GDO comms
@@ -101,18 +101,10 @@ Available automation actions:
 
 ## Migration notes
 
-### Removed user-level PlatformIO requirements
+### gdolib dependency location
 
-Old configs often contained:
-
-```yaml
-esphome:
-  platformio_options:
-    lib_deps:
-      - https://github.com/CircuitSetup/gdolib
-```
-
-This is no longer needed. Remove it.
+`gdolib` is configured in YAML (currently `packages/gdo/base.yaml` under `esphome.platformio_options.lib_deps`).
+This keeps dependency wiring outside `secplus_gdo` Python code.
 
 ### Re-sync lambda replaced
 
