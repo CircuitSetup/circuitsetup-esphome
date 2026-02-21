@@ -2,8 +2,6 @@
 secplus_gdo root component configuration.
 """
 
-from pathlib import Path
-
 import esphome.automation as automation
 import esphome.codegen as cg
 import esphome.config_validation as cv
@@ -26,13 +24,6 @@ CONF_MIN_COMMAND_INTERVAL = "min_command_interval"
 CONF_SYNC_RETRY_INTERVAL = "sync_retry_interval"
 CONF_AUTO_START = "auto_start"
 CONF_SECPLUS_GDO_ID = "secplus_gdo_id"
-
-GDOLIB_REPO = "https://github.com/CircuitSetup/gdolib.git"
-GDOLIB_REF = (Path(__file__).resolve().parent / "gdolib_ref.txt").read_text(
-    encoding="utf-8"
-).strip()
-if not GDOLIB_REF:
-    raise ValueError("components/secplus_gdo/gdolib_ref.txt must contain a gdolib git ref")
 
 secplus_gdo_ns = cg.esphome_ns.namespace("secplus_gdo")
 SECPLUS_GDO = secplus_gdo_ns.class_("GDOComponent", cg.Component)
@@ -102,7 +93,6 @@ SECPLUS_GDO_CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    cg.add_library("gdolib", None, f"{GDOLIB_REPO}#{GDOLIB_REF}")
 
     cg.add(var.set_uart_tx_pin(config[CONF_OUTPUT_GDO]))
     cg.add(var.set_uart_rx_pin(config[CONF_INPUT_GDO]))

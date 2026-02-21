@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "secplus.h"
+#include "../components/secplus_gdo/gdolib/secplus.h"
 
 static int expect_round_trip(uint32_t rolling, uint64_t fixed, uint32_t data) {
   uint8_t packet[19] = {0};

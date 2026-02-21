@@ -11,7 +11,7 @@
 #include "esphome/core/component.h"
 #include "esphome/core/log.h"
 #include "esphome/core/preferences.h"
-#include "gdo.h"
+#include "../gdolib/gdo.h"
 
 namespace esphome {
 namespace secplus_gdo {

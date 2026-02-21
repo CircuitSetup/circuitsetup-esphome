@@ -4,7 +4,7 @@ ESPHome configurations and external components for CircuitSetup garage door hard
 
 ## Highlights in this update
 
-- `gdolib` is now sourced directly from `https://github.com/CircuitSetup/gdolib` (pinned by `components/secplus_gdo/gdolib_ref.txt`).
+- `gdolib` is now vendored in-tree under `components/secplus_gdo/gdolib`.
 - No `platformio_options` are required for the normal Security+ path.
 - Core operations are now declarative via real component actions and buttons:
   - Sync/resync opener
