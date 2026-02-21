@@ -133,5 +133,3 @@ GitHub Actions workflow `.github/workflows/esphome-ci.yml` runs:
 - `esphome compile` for both examples
 
 Pinned to ESPHome `2026.2.x`.
-
-`gdolib` updates are controlled by `components/secplus_gdo/gdolib_ref.txt`.
