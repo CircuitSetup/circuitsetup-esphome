@@ -1,4 +1,187 @@
-packages:
-  secplus_base: !include gdo/base.yaml
-  secplus_diagnostics: !include gdo/diagnostics.yaml
-  secplus_pre_close_warning: !include gdo/pre-close-warning.yaml
+script:
+  - id: pc_warn
+    then:
+      - button.press: pre_close_warning
+
+secplus_gdo:
+  id: cs_gdo
+  input_gdo_pin: ${uart_rx_pin}
+  output_gdo_pin: ${uart_tx_pin}
+
+light:
+  - platform: secplus_gdo
+    name: $garage_light_name
+    secplus_gdo_id: cs_gdo
+    id: gdo_light
+
+cover:
+  - platform: secplus_gdo
+    name: $garage_door_cover_name
+    secplus_gdo_id: cs_gdo
+    id: gdo_door
+    pre_close_warning_duration: $garage_door_close_warning_duration
+    pre_close_warning_start:
+      - script.execute:
+          id: pc_warn
+    pre_close_warning_end:
+      - script.stop: pc_warn
+      - light.turn_off: warning_led
+
+sensor:
+  - platform: secplus_gdo
+    secplus_gdo_id: cs_gdo
+    id: gdo_openings
+    type: openings
+    name: $garage_openings_name
+    unit_of_measurement: openings
+    icon: mdi:open-in-app
+
+text_sensor:
+  - platform: secplus_gdo
+    secplus_gdo_id: cs_gdo
+    id: gdo_battery
+    name: $garage_battery_name
+    type: battery
+    icon: mdi:battery
+
+lock:
+  - platform: secplus_gdo
+    id: gdo_lock_remotes
+    secplus_gdo_id: cs_gdo
+    name: $garage_lock_name
+
+binary_sensor:
+  - platform: secplus_gdo
+    name: $garage_motion_name
+    id: gdo_motion
+    secplus_gdo_id: cs_gdo
+    device_class: motion
+    type: motion
+  - platform: secplus_gdo
+    name: $garage_obstruction_name
+    id: gdo_obst
+    secplus_gdo_id: cs_gdo
+    device_class: problem
+    type: obstruction
+  - platform: secplus_gdo
+    name: $garage_motor_name
+    id: gdo_motor
+    secplus_gdo_id: cs_gdo
+    device_class: running
+    type: motor
+  - platform: secplus_gdo
+    name: $garage_button_name
+    id: gdo_button
+    secplus_gdo_id: cs_gdo
+    type: button
+  - platform: secplus_gdo
+    name: $garage_wireless_remote_name
+    id: gdo_wireless_remote
+    secplus_gdo_id: cs_gdo
+    type: wireless_remote
+    icon: mdi:remote
+  - platform: secplus_gdo
+    name: $garage_sync_name
+    id: gdo_synced
+    secplus_gdo_id: cs_gdo
+    type: sync
+    device_class: connectivity
+
+switch:
+  - platform: secplus_gdo
+    id: gdo_learn
+    type: learn
+    secplus_gdo_id: cs_gdo
+    name: Learn
+    icon: mdi:plus-box
+  - platform: secplus_gdo
+    id: gdo_toggle_only
+    type: toggle_only
+    secplus_gdo_id: cs_gdo
+    name: Toggle Only
+    icon: mdi:plus-box
+    entity_category: config
+
+select:
+  - platform: secplus_gdo
+    id: gdo_protocol
+    secplus_gdo_id: cs_gdo
+    name: Security+ protocol
+    icon: mdi:settings
+    entity_category: config
+
+button:
+  - platform: factory_reset
+    name: Factory Reset
+    id: hard_reset
+    entity_category: config
+  - platform: template
+    name: Reset door timings
+    id: reset_door_timings
+    entity_category: config
+    on_press:
+      - number.set:
+          id: gdo_open_duration
+          value: 0
+      - number.set:
+          id: gdo_close_duration
+          value: 0
+      - button.press:
+          id: restart_button
+  - platform: template
+    name: Re-sync
+    id: resync
+    entity_category: config
+    on_press:
+      - lambda: |-
+          // Generate random upper 16 bits, keep lower 16 bits as 0x2908
+          uint32_t random_upper = (esp_random() & 0x7F7F) << 16;
+          uint32_t client_id = random_upper | 0x2908;
+          ESP_LOGW("lambda","Re-syncing with Client ID: 0x%08X (%" PRIu32 ")", client_id, random_upper);
+          id(gdo_client_id).update_state(client_id);
+      - number.set:
+          id: gdo_rolling_code
+          value: 0
+      - button.press:
+          id: restart_button
+
+number:
+  - platform: secplus_gdo
+    name: Opening duration
+    secplus_gdo_id: cs_gdo
+    entity_category: config
+    id: gdo_open_duration
+    type: open_duration
+    unit_of_measurement: "ms"
+    internal: true
+
+  - platform: secplus_gdo
+    name: Closing duration
+    secplus_gdo_id: cs_gdo
+    entity_category: config
+    id: gdo_close_duration
+    type: close_duration
+    unit_of_measurement: "ms"
+    internal: true
+
+  - platform: secplus_gdo
+    name: Client ID
+    secplus_gdo_id: cs_gdo
+    entity_category: config
+    id: gdo_client_id
+    type: client_id
+    mode: box
+    internal: true
+
+  - platform: secplus_gdo
+    name: Rolling Code
+    secplus_gdo_id: cs_gdo
+    entity_category: config
+    id: gdo_rolling_code
+    type: rolling_code
+    mode: box
+    internal: true
+
+wifi:
+  on_connect:
+    lambda: id(cs_gdo).start_gdo();

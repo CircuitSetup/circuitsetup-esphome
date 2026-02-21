@@ -19,26 +19,48 @@
 
 #include "esphome/components/lock/lock.h"
 #include "esphome/core/component.h"
-#include "../gdolib/gdo.h"
+#include "gdo.h"
 
 namespace esphome {
 namespace secplus_gdo {
 
-class GDOComponent;
+    class GDOLock : public lock::Lock, public Component {
+        public:
+        void set_state(gdo_lock_state_t state) {
+            if (state == this->lock_state_) {
+                return;
+            }
 
-class GDOLock : public lock::Lock, public Component {
- public:
-  void set_state(gdo_lock_state_t state);
-  void control(const lock::LockCall &call) override;
-  void set_sync_state(bool synced) { this->synced_ = synced; }
-  void set_parent(GDOComponent *parent) { this->parent_ = parent; }
+            this->lock_state_ = state;
+            ESP_LOGI(TAG, "Lock state: %s", gdo_lock_state_to_string(state));
+            this->publish_state(state == GDO_LOCK_STATE_LOCKED ?
+                                         lock::LockState::LOCK_STATE_LOCKED :
+                                         lock::LockState::LOCK_STATE_UNLOCKED);
+        }
 
- protected:
-  gdo_lock_state_t lock_state_{GDO_LOCK_STATE_MAX};
-  bool synced_{false};
-  GDOComponent *parent_{nullptr};
-  static constexpr const char *TAG = "GDOLock";
-};
+        void control(const lock::LockCall& call) override {
+            if (!this->synced_) {
+                return;
+            }
 
-}  // namespace secplus_gdo
-}  // namespace esphome
+            auto state = *call.get_state();
+
+            if (state == lock::LockState::LOCK_STATE_LOCKED) {
+                gdo_lock();
+            } else if (state == lock::LockState::LOCK_STATE_UNLOCKED) {
+                gdo_unlock();
+            }
+        }
+
+        void set_sync_state(bool synced) {
+            this->synced_ = synced;
+        }
+
+        private:
+        gdo_lock_state_t lock_state_{GDO_LOCK_STATE_MAX};
+        bool synced_{false};
+        static constexpr const char* TAG = "GDOLock";
+    };
+
+} // namespace secplus_gdo
+} // namespace esphome

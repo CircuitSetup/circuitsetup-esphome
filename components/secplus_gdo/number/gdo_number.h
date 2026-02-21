@@ -15,93 +15,54 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+# pragma once
 
-#include "esphome/components/number/number.h"
 #include "esphome/core/component.h"
-#include "esphome/core/log.h"
 #include "esphome/core/preferences.h"
-#include "../gdolib/gdo.h"
+#include "esphome/components/number/number.h"
 
 namespace esphome {
 namespace secplus_gdo {
 
-enum class NumberType {
-  OPEN_DURATION,
-  CLOSE_DURATION,
-  CLIENT_ID,
-  ROLLING_CODE,
-};
-
 class GDONumber : public number::Number, public Component {
- public:
-  void dump_config() override {}
+    public:
+        void dump_config() override {}
+        void setup() override {
+            float value;
+            this->pref_ = global_preferences->make_preference<float>(this->get_object_id_hash());
+            if (!this->pref_.load(&value)) {
+                value = 0;
+            }
 
-  void setup() override {
-    float value = 0.0f;
-    this->pref_ = this->make_entity_preference<float>();
-    if (!this->pref_.load(&value)) {
-      value = 0.0f;
-      this->has_state_value_ = false;
-    } else {
-      this->has_state_value_ = true;
-    }
+            this->control(value);
+        }
 
-    this->state = value;
-    this->publish_state(value);
-  }
+        void update_state(float value) {
+            if (value == this->state) {
+                return;
+            }
 
-  void update_state(float value) {
-    if (this->has_state_value_ && value == this->state) {
-      return;
-    }
-    this->state = value;
-    this->has_state_value_ = true;
-    this->publish_state(value);
-    this->pref_.save(&value);
-  }
+            this->state = value;
+            this->publish_state(value);
+            this->pref_.save(&value);
+        }
 
-  void control(float value) override {
-    if (this->has_state_value_ && value == this->state) {
-      return;
-    }
+        void control(float value) override {
+            if (value == this->state) {
+                return;
+            }
 
-    esp_err_t err = ESP_OK;
-    uint32_t as_u32 = static_cast<uint32_t>(value);
-    switch (this->type_) {
-      case NumberType::OPEN_DURATION:
-        err = gdo_set_open_duration(static_cast<uint16_t>(as_u32));
-        break;
-      case NumberType::CLOSE_DURATION:
-        err = gdo_set_close_duration(static_cast<uint16_t>(as_u32));
-        break;
-      case NumberType::CLIENT_ID:
-        err = gdo_set_client_id(as_u32);
-        break;
-      case NumberType::ROLLING_CODE:
-        err = gdo_set_rolling_code(as_u32);
-        break;
-      default:
-        err = ESP_ERR_INVALID_ARG;
-        break;
-    }
+            if (this->f_control) {
+                this->f_control(value);
+                this->update_state(value);
+            }
+        }
 
-    if (err == ESP_OK || err == ESP_ERR_INVALID_STATE) {
-      this->update_state(value);
-    } else {
-      ESP_LOGW("gdo_number", "Failed to set number value: %s", esp_err_to_name(err));
-    }
-  }
+        void set_control_function(std::function<int(float)> f) { f_control = f; }
 
-  void set_type(NumberType type) { this->type_ = type; }
-  bool has_state_value() const { return this->has_state_value_; }
-  float get_value() const { return this->state; }
-
- protected:
-  NumberType type_{NumberType::OPEN_DURATION};
-  ESPPreferenceObject pref_{};
-  bool has_state_value_{false};
-};
-
-}  // namespace secplus_gdo
-}  // namespace esphome
+    protected:
+        ESPPreferenceObject pref_;
+        std::function<int(float)> f_control{nullptr};
+    };
+} // namespace secplus_gdo
+} // namespace esphome

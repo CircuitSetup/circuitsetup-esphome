@@ -7,18 +7,13 @@ namespace esphome {
 namespace secplus_gdo {
 
 constexpr char TAG[] = "gdo_cover";
-using namespace esphome::cover;
-static constexpr uint32_t PRE_CLOSE_TIMEOUT_ID = 0x47444F41;
-static constexpr uint32_t STOP_DOOR_TIMEOUT_ID = 0x47444F42;
-static constexpr uint32_t OPEN_DOOR_TIMEOUT_ID = 0x47444F43;
-static constexpr uint32_t CLOSE_DOOR_TIMEOUT_ID = 0x47444F44;
 
 void GDODoor::set_state(gdo_door_state_t state, float position) {
     if (this->pre_close_active_) {
         // If we are in the pre-close state and the door is closing,
         // then it was triggered by something else and we need to cancel the pre-close
         if (state == GDO_DOOR_STATE_CLOSING) {
-            this->cancel_timeout(PRE_CLOSE_TIMEOUT_ID);
+            this->cancel_timeout("pre_close");
             this->pre_close_active_ = false;
             if (this->pre_close_end_trigger) {
                 this->pre_close_end_trigger->trigger();
@@ -79,7 +74,7 @@ void GDODoor::do_action_after_warning(cover::CoverCall call) {
         this->pre_close_start_trigger->trigger();
     }
 
-    this->set_timeout(PRE_CLOSE_TIMEOUT_ID, this->pre_close_duration_, [this, call = std::move(call)]() {
+    this->set_timeout("pre_close", this->pre_close_duration_, [this, call = std::move(call)]() {
         this->pre_close_active_ = false;
         if (this->pre_close_end_trigger) {
             this->pre_close_end_trigger->trigger();
@@ -96,11 +91,7 @@ void GDODoor::do_action(const cover::CoverCall& call) {
     }
     if (call.get_toggle()) {
         ESP_LOGD(TAG, "Sending TOGGLE action");
-        if (this->parent_) {
-            this->parent_->door_toggle();
-        } else {
-            gdo_door_toggle();
-        }
+        gdo_door_toggle();
         return;
     }
 
@@ -109,76 +100,40 @@ void GDODoor::do_action(const cover::CoverCall& call) {
         if (pos == COVER_OPEN) {
             if (this->toggle_only_) {
                 ESP_LOGD(TAG, "Sending TOGGLE action");
-                if (this->parent_) {
-                    this->parent_->door_toggle();
-                } else {
-                    gdo_door_toggle();
-                }
+                gdo_door_toggle();
                 if (this->state_ == GDO_DOOR_STATE_STOPPED && this->prev_operation == COVER_OPERATION_OPENING) {
                     // If the door was stopped while opening, then we need to toggle to stop, then toggle again to open,
-                    this->set_timeout(STOP_DOOR_TIMEOUT_ID, 1000, [this]() {
-                        if (this->parent_) {
-                            this->parent_->door_stop();
-                        } else {
-                            gdo_door_stop();
-                        }
+                    this->set_timeout("stop_door", 1000, []() {
+                        gdo_door_stop();
                     });
-                    this->set_timeout(OPEN_DOOR_TIMEOUT_ID, 2000, [this]() {
-                        if (this->parent_) {
-                            this->parent_->door_toggle();
-                        } else {
-                            gdo_door_toggle();
-                        }
+                    this->set_timeout("open_door", 2000, []() {
+                        gdo_door_toggle();
                     });
                 }
             } else {
                 ESP_LOGD(TAG, "Sending OPEN action");
-                if (this->parent_) {
-                    this->parent_->door_open();
-                } else {
-                    gdo_door_open();
-                }
+                gdo_door_open();
             }
         } else if (pos == COVER_CLOSED) {
             if (this->toggle_only_) {
                 ESP_LOGD(TAG, "Sending TOGGLE action");
-                if (this->parent_) {
-                    this->parent_->door_toggle();
-                } else {
-                    gdo_door_toggle();
-                }
+                gdo_door_toggle();
                 if (this->state_ == GDO_DOOR_STATE_STOPPED && this->prev_operation == COVER_OPERATION_CLOSING) {
                     // If the door was stopped while closing, then we need to toggle to stop, then toggle again to close,
-                    this->set_timeout(STOP_DOOR_TIMEOUT_ID, 1000, [this]() {
-                        if (this->parent_) {
-                            this->parent_->door_stop();
-                        } else {
-                            gdo_door_stop();
-                        }
+                    this->set_timeout("stop_door", 1000, []() {
+                        gdo_door_stop();
                     });
-                    this->set_timeout(CLOSE_DOOR_TIMEOUT_ID, 2000, [this]() {
-                        if (this->parent_) {
-                            this->parent_->door_toggle();
-                        } else {
-                            gdo_door_toggle();
-                        }
+                    this->set_timeout("close_door", 2000, []() {
+                        gdo_door_toggle();
                     });
                 }
             } else {
                 ESP_LOGD(TAG, "Sending CLOSE action");
-                if (this->parent_) {
-                    this->parent_->door_close();
-                } else {
-                    gdo_door_close();
-                }
+                gdo_door_close();
             }
         } else {
             ESP_LOGD(TAG, "Moving garage door to position %f", pos);
-            if (this->parent_) {
-                this->parent_->door_move_to(pos);
-            } else {
-                gdo_door_move_to_target(10000 - (pos * 10000));
-            }
+            gdo_door_move_to_target(10000 - (pos * 10000));
         }
     }
 }
@@ -192,11 +147,7 @@ void GDODoor::control(const cover::CoverCall& call) {
     if (call.get_stop()) {
         ESP_LOGD(TAG, "Stop command received");
         this->cancel_pre_close_warning();
-        if (this->parent_) {
-            this->parent_->door_stop();
-        } else {
-            gdo_door_stop();
-        }
+        gdo_door_stop();
         return;
     }
 
@@ -223,8 +174,7 @@ void GDODoor::control(const cover::CoverCall& call) {
 
         if ((this->current_operation == COVER_OPERATION_OPENING && pos > this->position) ||
             (this->current_operation == COVER_OPERATION_CLOSING && pos < this->position)) {
-            float target = this->target_position_.has_value() ? *this->target_position_ : this->position;
-            ESP_LOGD(TAG, "Door is already moving in target direction; target position: %.0f%%", target * 100.0f);
+            ESP_LOGD(TAG, "Door is already moving in target direction; target position: %.0f%%", *this->target_position_);
             this->publish_state(false);
             return;
         }
@@ -238,7 +188,7 @@ void GDODoor::control(const cover::CoverCall& call) {
             }
 
             ESP_LOGD(TAG, "Canceling pending action");
-            this->cancel_timeout(PRE_CLOSE_TIMEOUT_ID);
+            this->cancel_timeout("pre_close");
             this->pre_close_active_ = false;
             if (this->pre_close_end_trigger) {
                 this->pre_close_end_trigger->trigger();
@@ -248,11 +198,7 @@ void GDODoor::control(const cover::CoverCall& call) {
         if (this->current_operation == COVER_OPERATION_OPENING ||
             this->current_operation == COVER_OPERATION_CLOSING) {
             ESP_LOGD(TAG, "Door is in motion - Sending STOP action");
-            if (this->parent_) {
-                this->parent_->door_stop();
-            } else {
-                gdo_door_stop();
-            }
+            gdo_door_stop();
         }
 
         if (pos == COVER_OPEN) {
@@ -280,7 +226,7 @@ void GDODoor::control(const cover::CoverCall& call) {
 void GDODoor::cancel_pre_close_warning() {
     if (this->pre_close_active_) {
         ESP_LOGD(TAG, "Canceling pending pre-close warning");
-        this->cancel_timeout(PRE_CLOSE_TIMEOUT_ID);
+        this->cancel_timeout("pre_close");
         this->pre_close_active_ = false;
         if (this->pre_close_end_trigger) {
             this->pre_close_end_trigger->trigger();

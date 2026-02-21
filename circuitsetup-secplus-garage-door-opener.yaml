@@ -193,3 +193,10 @@ logger:
 api:
 
 web_server:
+
+esphome:
+  platformio_options:
+    lib_deps:
+      - https://github.com/CircuitSetup/gdolib
+    build_flags:
+      - -Wl,--wrap=esp_panic_handler
