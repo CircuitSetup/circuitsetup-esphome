@@ -72,3 +72,4 @@ on_...:
 
 - `gdolib` is pulled automatically from `https://github.com/CircuitSetup/gdolib` at the pinned ref in `components/secplus_gdo/gdolib_ref.txt`.
 - No `platformio_options` are required for normal usage.
+- To upgrade `gdolib`, update `components/secplus_gdo/gdolib_ref.txt`.
