@@ -40,6 +40,14 @@ namespace secplus_gdo {
 static constexpr char TAG[] = "secplus_gdo";
 static constexpr uint32_t WIRELESS_REMOTE_OFF_TIMEOUT_ID = 0x53475033;
 
+static const char *gdolib_version() {
+#ifdef GDOLIB_VERSION_STRING
+  return GDOLIB_VERSION_STRING;
+#else
+  return "unknown";
+#endif
+}
+
 static void gdo_event_handler(const gdo_status_t *status, gdo_cb_event_t event, void *arg) {
   auto *gdo = static_cast<GDOComponent *>(arg);
   if (gdo == nullptr || status == nullptr) {
@@ -131,7 +139,7 @@ void GDOComponent::setup() {
   }
 #endif
 
-  this->f_gdolib_version_text_.call(gdo_library_version());
+  this->f_gdolib_version_text_.call(gdolib_version());
 
   if (this->door_ != nullptr && this->toggle_only_switch_ != nullptr) {
     this->door_->set_toggle_only(this->toggle_only_switch_->state);
@@ -157,7 +165,7 @@ void GDOComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  Sync retry interval: %" PRIu32 " ms", this->sync_retry_interval_ms_);
   ESP_LOGCONFIG(TAG, "  Min command interval: %" PRIu32 " ms", this->min_command_interval_ms_);
   ESP_LOGCONFIG(TAG, "  Auto start: %s", YESNO(this->auto_start_));
-  ESP_LOGCONFIG(TAG, "  gdolib version: %s", gdo_library_version());
+  ESP_LOGCONFIG(TAG, "  gdolib version: %s", gdolib_version());
 }
 
 void GDOComponent::start_gdo() {

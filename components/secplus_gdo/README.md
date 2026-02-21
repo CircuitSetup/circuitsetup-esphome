@@ -70,5 +70,5 @@ on_...:
 
 ## Notes
 
-- `gdolib` is vendored in this component (`components/secplus_gdo/gdolib`).
+- `gdolib` is pulled automatically from `https://github.com/CircuitSetup/gdolib` at the pinned ref in `components/secplus_gdo/gdolib_ref.txt`.
 - No `platformio_options` are required for normal usage.
