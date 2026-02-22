@@ -79,6 +79,7 @@ def _apply_type_defaults(config):
 
 
 CONFIG_SCHEMA = cv.All(
+    _apply_type_defaults,
     sensor.sensor_schema(GDOStat)
     .extend(
         {
@@ -86,7 +87,6 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(SECPLUS_GDO_CONFIG_SCHEMA),
-    _apply_type_defaults,
 )
 
 

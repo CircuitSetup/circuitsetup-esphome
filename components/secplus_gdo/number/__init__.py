@@ -14,7 +14,7 @@ from .. import CONF_SECPLUS_GDO_ID, SECPLUS_GDO_CONFIG_SCHEMA, secplus_gdo_ns
 DEPENDENCIES = ["secplus_gdo"]
 
 GDONumber = secplus_gdo_ns.class_("GDONumber", number.Number, cg.Component)
-NumberType = secplus_gdo_ns.enum("NumberType")
+NumberType = secplus_gdo_ns.enum("NumberType", is_class=True)
 
 CONF_TYPE = "type"
 TYPE_OPTIONS = [
@@ -69,6 +69,7 @@ def _apply_type_defaults(config):
 
 
 CONFIG_SCHEMA = cv.All(
+    _apply_type_defaults,
     number.number_schema(GDONumber)
     .extend(
         {
@@ -76,7 +77,6 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(SECPLUS_GDO_CONFIG_SCHEMA),
-    _apply_type_defaults,
 )
 
 

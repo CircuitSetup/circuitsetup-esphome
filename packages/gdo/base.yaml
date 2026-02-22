@@ -132,31 +132,31 @@ number:
 button:
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
-    id: gdo_sync
+    id: gdo_sync_btn
     type: sync
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
-    id: gdo_resync
+    id: gdo_resync_btn
     type: resync
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
-    id: gdo_restart_comms
+    id: gdo_restart_comms_btn
     type: restart_comms
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
-    id: gdo_reset_travel
+    id: gdo_reset_travel_btn
     type: reset_travel_timings
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
-    id: gdo_door_toggle
+    id: gdo_door_toggle_btn
     type: door_toggle
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
-    id: gdo_light_toggle
+    id: gdo_light_toggle_btn
     type: light_toggle
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
-    id: gdo_lock_toggle
+    id: gdo_lock_toggle_btn
     type: lock_toggle
   - platform: factory_reset
     name: Factory Reset

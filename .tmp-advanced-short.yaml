@@ -1,0 +1,73 @@
+substitutions:
+  name: gdo-advanced
+  friendly_name: GDO Advanced
+  project_name: circuitsetup.secplus-gdo
+  project_version: "2.0.0"
+
+  uart_tx_pin: GPIO1
+  uart_rx_pin: GPIO2
+  warning_beep_pin: GPIO4
+  warning_leds_pin: GPIO3
+
+  status_led: GPIO18
+  sda: GPIO16
+  scl: GPIO15
+
+  garage_door_cover_name: Garage Door
+  garage_light_name: Garage Light
+  garage_openings_name: Garage Openings
+  garage_lock_name: Garage Lock
+  garage_motion_name: Motion
+  garage_obstruction_name: Obstruction
+  garage_motor_name: Motor
+  garage_button_name: Wall Button
+  garage_wireless_remote_name: Wireless Remote
+  garage_sync_name: Synced
+  garage_battery_name: Battery
+
+  garage_temp_name: Garage Temp
+  garage_humidity_name: Garage Humidity
+  garage_door_close_warning_duration: 5s
+  temp_update_interval: 60s
+  temp_adjust: "1.0"
+  dew_point_offset: "0.0"
+
+  blink_on_state: "true"
+
+external_components:
+  - source:
+      type: local
+      path: ./components
+    components: [secplus_gdo]
+
+packages:
+  core: !include packages/core-esp32-s3-arduino.yaml
+  network: !include packages/wifi-esp32.yaml
+  status_led: !include packages/status-led.yaml
+  secplus: !include packages/secplus-gdo.yaml
+  secplus_diagnostics: !include packages/gdo/diagnostics.yaml
+  secplus_pre_close_warning: !include packages/gdo/pre-close-warning.yaml
+  warning_led: !include packages/warning-led.yaml
+  buzzer: !include packages/buzzer-rtttl.yaml
+  preclose_tones: !include packages/pre-close-warning-tones.yaml
+  temp_sensor: !include packages/temp-sensor.yaml
+  debug: !include packages/debug.yaml
+
+esphome:
+  build_path: C:/b/gdo-advanced
+
+logger:
+  level: DEBUG
+
+ota:
+  - platform: web_server
+
+api:
+  actions:
+    - action: play_rtttl
+      variables:
+        song_str: string
+      then:
+        - rtttl.play: !lambda return song_str;
+
+web_server:

@@ -44,6 +44,7 @@ substitutions:
   preclose_tones_package: ../packages/pre-close-warning-tones.yaml
   temp_sensor_package: ../packages/temp-sensor.yaml
   debug_package: ../packages/debug.yaml
+  status_led_inverted: "false"
 
 esphome:
   name: ${name}
@@ -68,15 +69,15 @@ external_components:
 
 packages:
   secplus_base: !include ../packages/gdo/base.yaml
-  secplus_diagnostics: !include ${secplus_diagnostics_package}
-  secplus_preclose: !include ${secplus_preclose_package}
-  warning_led: !include ${warning_led_package}
-  buzzer: !include ${buzzer_package}
-  preclose_tones: !include ${preclose_tones_package}
+  secplus_diagnostics: !include ../packages/gdo/diagnostics.yaml
+  secplus_preclose: !include ../packages/gdo/pre-close-warning.yaml
+  warning_led: !include ../packages/warning-led.yaml
+  buzzer: !include ../packages/buzzer-rtttl.yaml
+  preclose_tones: !include ../packages/pre-close-warning-tones.yaml
   status_led: !include ../packages/status-led.yaml
-  temp_sensor: !include ${temp_sensor_package}
-  network: !include ${network_package}
-  debug: !include ${debug_package}
+  temp_sensor: !include ../packages/temp-sensor.yaml
+  network: !include ../packages/wifi-esp32.yaml
+  debug: !include ../packages/debug.yaml
 
 dashboard_import:
   package_import_url: github://CircuitSetup/circuitsetup-esphome/examples/advanced.yaml@master

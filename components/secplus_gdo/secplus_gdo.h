@@ -65,9 +65,9 @@ class GDOComponent : public Component
 
   void set_obstruction_from_status(bool value) { this->gdo_conf_.obst_from_status = value; }
   void set_invert_uart(bool value) { this->gdo_conf_.invert_uart = value; }
-  void set_uart_tx_pin(gpio_num_t pin) { this->gdo_conf_.uart_tx_pin = pin; }
-  void set_uart_rx_pin(gpio_num_t pin) { this->gdo_conf_.uart_rx_pin = pin; }
-  void set_obstruction_input_pin(gpio_num_t pin) { this->gdo_conf_.obst_in_pin = pin; }
+  void set_uart_tx_pin(int pin) { this->gdo_conf_.uart_tx_pin = static_cast<gpio_num_t>(pin); }
+  void set_uart_rx_pin(int pin) { this->gdo_conf_.uart_rx_pin = static_cast<gpio_num_t>(pin); }
+  void set_obstruction_input_pin(int pin) { this->gdo_conf_.obst_in_pin = static_cast<gpio_num_t>(pin); }
   void set_min_command_interval(uint32_t ms) { this->min_command_interval_ms_ = ms; }
   void set_sync_retry_interval(uint32_t ms) { this->sync_retry_interval_ms_ = ms; }
   void set_auto_start(bool value) { this->auto_start_ = value; }

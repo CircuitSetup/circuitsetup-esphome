@@ -17,7 +17,7 @@ DEPENDENCIES = ["secplus_gdo"]
 GDOCommandButton = secplus_gdo_ns.class_(
     "GDOCommandButton", button.Button, cg.Component
 )
-CommandButtonType = secplus_gdo_ns.enum("CommandButtonType")
+CommandButtonType = secplus_gdo_ns.enum("CommandButtonType", is_class=True)
 
 CONF_TYPE = "type"
 TYPE_OPTIONS = [
@@ -110,6 +110,7 @@ def _apply_type_defaults(config):
 
 
 CONFIG_SCHEMA = cv.All(
+    _apply_type_defaults,
     button.button_schema(GDOCommandButton)
     .extend(
         {
@@ -117,7 +118,6 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(SECPLUS_GDO_CONFIG_SCHEMA),
-    _apply_type_defaults,
 )
 
 

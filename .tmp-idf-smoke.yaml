@@ -1,0 +1,11 @@
+esphome:
+  name: idf-smoke
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+wifi:
+  ssid: "xxxxxxxx"
+  password: "12345678"
+logger:
+api:

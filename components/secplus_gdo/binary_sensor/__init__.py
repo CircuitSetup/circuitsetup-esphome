@@ -62,6 +62,7 @@ def _apply_type_defaults(config):
 
 
 CONFIG_SCHEMA = cv.All(
+    _apply_type_defaults,
     binary_sensor.binary_sensor_schema(GDOBinarySensor)
     .extend(
         {
@@ -69,7 +70,6 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(SECPLUS_GDO_CONFIG_SCHEMA),
-    _apply_type_defaults,
 )
 
 

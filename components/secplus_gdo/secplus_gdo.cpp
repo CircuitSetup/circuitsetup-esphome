@@ -32,6 +32,11 @@
 #include "esphome/components/wifi/wifi_component.h"
 #endif
 
+extern "C" {
+esp_err_t gdo_toggle_lock(void) __attribute__((weak));
+esp_err_t gdo_lock_toggle(void) __attribute__((weak));
+}
+
 static gpio_num_t g_panic_uart_tx_pin = GPIO_NUM_1;
 
 namespace esphome {
@@ -577,7 +582,15 @@ esp_err_t GDOComponent::lock() { return this->handle_command_result_("lock", gdo
 
 esp_err_t GDOComponent::unlock() { return this->handle_command_result_("unlock", gdo_unlock()); }
 
-esp_err_t GDOComponent::lock_toggle() { return this->handle_command_result_("lock_toggle", gdo_toggle_lock()); }
+esp_err_t GDOComponent::lock_toggle() {
+  if (gdo_lock_toggle != nullptr) {
+    return this->handle_command_result_("lock_toggle", gdo_lock_toggle());
+  }
+  if (gdo_toggle_lock != nullptr) {
+    return this->handle_command_result_("lock_toggle", gdo_toggle_lock());
+  }
+  return this->handle_command_result_("lock_toggle", ESP_ERR_NOT_SUPPORTED);
+}
 
 void GDOComponent::set_protocol_state(gdo_protocol_type_t protocol) {
   if (this->protocol_select_ != nullptr) {
@@ -665,8 +678,8 @@ void GDOComponent::on_wifi_connect_state(StringRef ssid, std::span<const uint8_t
 }  // namespace secplus_gdo
 }  // namespace esphome
 
-// Need to wrap the panic handler to disable the GDO TX pin and pull the output high to
-// prevent spuriously triggering the GDO to open when the ESP32 panics.
+// Wrap the panic handler in ESP-IDF-only builds to disable GDO TX and avoid spurious opener commands.
+#if !defined(USE_ARDUINO)
 extern "C" {
 #include "hal/gpio_hal.h"
 
@@ -682,3 +695,4 @@ void __wrap_esp_panic_handler(void *info) {
   __real_esp_panic_handler(info);
 }
 }  // extern "C"
+#endif

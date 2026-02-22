@@ -105,7 +105,7 @@ async def to_code(config):
     cg.add(var.set_sync_retry_interval(config[CONF_SYNC_RETRY_INTERVAL].total_milliseconds))
     cg.add(var.set_auto_start(config[CONF_AUTO_START]))
 
-    if CORE.is_esp32:
+    if CORE.is_esp32 and not CORE.using_arduino:
         cg.add_build_flag("-Wl,--wrap=esp_panic_handler")
 
     if "wifi" in CORE.config:
