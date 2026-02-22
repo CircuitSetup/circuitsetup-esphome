@@ -6,3 +6,5 @@
 __pycache__/
 .vscode
 *.code-workspace
+/.tmp_esphome
+/.tmp_gdolib
