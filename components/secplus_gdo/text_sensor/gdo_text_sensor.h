@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 CircuitSetup
+ * Copyright (C) 2024  Konnected Inc.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,13 +17,40 @@
 
 #pragma once
 
-#include "esphome/core/component.h"
+#include <cstdint>
+#include <string>
+
 #include "esphome/components/text_sensor/text_sensor.h"
+#include "esphome/core/component.h"
+#include "esphome/core/log.h"
 
 namespace esphome {
 namespace secplus_gdo {
 
-class GDOTextSensor : public text_sensor::TextSensor, public Component {};
+enum class GDOTextSensorType : uint8_t {
+    BATTERY = 0,
+};
+
+class GDOTextSensor : public text_sensor::TextSensor, public Component {
+public:
+    void dump_config() override { ESP_LOGCONFIG(TAG, "GDO text sensor type: %s", this->type_to_string_()); }
+    void set_type(uint8_t type) { this->type_ = static_cast<GDOTextSensorType>(type); }
+    GDOTextSensorType get_type() const { return this->type_; }
+    void update_state(const std::string &value) { this->publish_state(value); }
+
+protected:
+    const char *type_to_string_() const {
+        switch (this->type_) {
+        case GDOTextSensorType::BATTERY:
+            return "battery";
+        default:
+            return "unknown";
+        }
+    }
+
+    GDOTextSensorType type_{GDOTextSensorType::BATTERY};
+    static constexpr const char *TAG = "gdo.text_sensor";
+};
 
 } // namespace secplus_gdo
 } // namespace esphome

@@ -22,18 +22,19 @@ import esphome.config_validation as cv
 from esphome.components import light
 from esphome.const import CONF_OUTPUT_ID  # New in 2023.5
 
-from .. import SECPLUS_GDO_CONFIG_SCHEMA, secplus_gdo_ns, CONF_SECPLUS_GDO_ID
+from .. import CONF_SECPLUS_GDO_ID, SECPLUS_GDO_CONFIG_SCHEMA, secplus_gdo_ns, validate_cpp_symbol_id
 
 DEPENDENCIES = ["secplus_gdo"]
 
-GDOLight = secplus_gdo_ns.class_(
-    "GDOLight", light.LightOutput, cg.Component
+GDOLight = secplus_gdo_ns.class_("GDOLight", light.LightOutput, cg.Component)
+
+CONFIG_SCHEMA = cv.All(
+    light.light_schema(
+        GDOLight,
+        light.LightType.BINARY,
+    ).extend(SECPLUS_GDO_CONFIG_SCHEMA),
+    lambda config: validate_cpp_symbol_id(config, CONF_OUTPUT_ID),
 )
-
-
-CONFIG_SCHEMA = light.LIGHT_SCHEMA.extend(
-    {cv.GenerateID(CONF_OUTPUT_ID): cv.declare_id(GDOLight)}
-).extend(SECPLUS_GDO_CONFIG_SCHEMA)
 
 
 async def to_code(config):

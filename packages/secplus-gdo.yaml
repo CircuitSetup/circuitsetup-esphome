@@ -34,7 +34,45 @@ sensor:
     type: openings
     name: $garage_openings_name
     unit_of_measurement: openings
+    accuracy_decimals: 0
+    state_class: total_increasing
     icon: mdi:open-in-app
+    entity_category: diagnostic
+  - platform: secplus_gdo
+    secplus_gdo_id: cs_gdo
+    id: gdo_paired_total
+    type: paired_devices_total
+    name: Paired Devices
+    accuracy_decimals: 0
+    entity_category: diagnostic
+  - platform: secplus_gdo
+    secplus_gdo_id: cs_gdo
+    id: gdo_paired_remotes
+    type: paired_devices_remotes
+    name: Paired Remotes
+    accuracy_decimals: 0
+    entity_category: diagnostic
+  - platform: secplus_gdo
+    secplus_gdo_id: cs_gdo
+    id: gdo_paired_keypads
+    type: paired_devices_keypads
+    name: Paired Keypads
+    accuracy_decimals: 0
+    entity_category: diagnostic
+  - platform: secplus_gdo
+    secplus_gdo_id: cs_gdo
+    id: gdo_paired_wall_controls
+    type: paired_devices_wall_controls
+    name: Paired Wall Controls
+    accuracy_decimals: 0
+    entity_category: diagnostic
+  - platform: secplus_gdo
+    secplus_gdo_id: cs_gdo
+    id: gdo_paired_accessories
+    type: paired_devices_accessories
+    name: Paired Accessories
+    accuracy_decimals: 0
+    entity_category: diagnostic
 
 text_sensor:
   - platform: secplus_gdo
@@ -43,6 +81,7 @@ text_sensor:
     name: $garage_battery_name
     type: battery
     icon: mdi:battery
+    entity_category: diagnostic
 
 lock:
   - platform: secplus_gdo
@@ -94,6 +133,7 @@ switch:
     secplus_gdo_id: cs_gdo
     name: Learn
     icon: mdi:plus-box
+    entity_category: config
   - platform: secplus_gdo
     id: gdo_toggle_only
     type: toggle_only
@@ -181,7 +221,3 @@ number:
     type: rolling_code
     mode: box
     internal: true
-
-wifi:
-  on_connect:
-    lambda: id(cs_gdo).start_gdo();

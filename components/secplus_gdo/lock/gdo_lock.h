@@ -19,13 +19,16 @@
 
 #include "esphome/components/lock/lock.h"
 #include "esphome/core/component.h"
+#include "esphome/core/log.h"
 #include "gdo.h"
 
 namespace esphome {
 namespace secplus_gdo {
 
     class GDOLock : public lock::Lock, public Component {
-        public:
+    public:
+        void dump_config() override { ESP_LOGCONFIG(TAG, "GDO lock configured"); }
+
         void set_state(gdo_lock_state_t state) {
             if (state == this->lock_state_) {
                 return;
@@ -38,17 +41,31 @@ namespace secplus_gdo {
                                          lock::LockState::LOCK_STATE_UNLOCKED);
         }
 
-        void control(const lock::LockCall& call) override {
+        void control(const lock::LockCall &call) override {
             if (!this->synced_) {
+                ESP_LOGW(TAG, "Ignoring lock command while opener is not synced");
+                return;
+            }
+
+            if (!call.get_state().has_value()) {
+                ESP_LOGE(TAG, "Lock control called without a target state");
                 return;
             }
 
             auto state = *call.get_state();
+            esp_err_t err = ESP_OK;
 
             if (state == lock::LockState::LOCK_STATE_LOCKED) {
-                gdo_lock();
+                err = gdo_lock();
             } else if (state == lock::LockState::LOCK_STATE_UNLOCKED) {
-                gdo_unlock();
+                err = gdo_unlock();
+            } else {
+                ESP_LOGE(TAG, "Unsupported lock state requested");
+                return;
+            }
+
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to send lock command: %s", esp_err_to_name(err));
             }
         }
 
@@ -56,10 +73,10 @@ namespace secplus_gdo {
             this->synced_ = synced;
         }
 
-        private:
+    private:
         gdo_lock_state_t lock_state_{GDO_LOCK_STATE_MAX};
         bool synced_{false};
-        static constexpr const char* TAG = "GDOLock";
+        static constexpr const char *TAG = "GDOLock";
     };
 
 } // namespace secplus_gdo

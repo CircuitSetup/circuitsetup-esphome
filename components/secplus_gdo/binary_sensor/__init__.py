@@ -22,7 +22,7 @@ import esphome.config_validation as cv
 from esphome.components import binary_sensor
 from esphome.const import CONF_ID
 
-from .. import SECPLUS_GDO_CONFIG_SCHEMA, secplus_gdo_ns, CONF_SECPLUS_GDO_ID
+from .. import CONF_SECPLUS_GDO_ID, SECPLUS_GDO_CONFIG_SCHEMA, secplus_gdo_ns, validate_cpp_symbol_id
 
 DEPENDENCIES = ["secplus_gdo"]
 
@@ -32,23 +32,23 @@ GDOBinarySensor = secplus_gdo_ns.class_(
 
 CONF_TYPE = "type"
 TYPES = {
-    "motion": "register_motion",
-    "obstruction": "register_obstruction",
-    "motor": "register_motor",
-    "button": "register_button",
-    "sync": "register_sync",
-    "wireless_remote": "register_wireless_remote",
+    "motion": 0,
+    "obstruction": 1,
+    "motor": 2,
+    "button": 3,
+    "sync": 4,
+    "wireless_remote": 5,
 }
 
-
-CONFIG_SCHEMA = (
+CONFIG_SCHEMA = cv.All(
     binary_sensor.binary_sensor_schema(GDOBinarySensor)
     .extend(
         {
             cv.Required(CONF_TYPE): cv.enum(TYPES, lower=True),
         }
     )
-    .extend(SECPLUS_GDO_CONFIG_SCHEMA)
+    .extend(SECPLUS_GDO_CONFIG_SCHEMA),
+    validate_cpp_symbol_id,
 )
 
 
@@ -57,7 +57,5 @@ async def to_code(config):
     await binary_sensor.register_binary_sensor(var, config)
     await cg.register_component(var, config)
     parent = await cg.get_variable(config[CONF_SECPLUS_GDO_ID])
-    fcall = str(parent) + "->" + str(TYPES[config[CONF_TYPE]])
-    text = fcall + "(std::bind(&" + str(GDOBinarySensor) + "::publish_state," + str(config[CONF_ID]) + ",std::placeholders::_1))"
-    cg.add((cg.RawExpression(text)))
-
+    cg.add(var.set_type(TYPES[config[CONF_TYPE]]))
+    cg.add(parent.register_binary_sensor(var))

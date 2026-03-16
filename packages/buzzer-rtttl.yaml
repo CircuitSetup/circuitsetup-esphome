@@ -21,9 +21,9 @@ script:
       - rtttl.play: $error_tone
 
 api:
-  services:      
-    # Call the play_rtttl service to play any RTTTL song in the garage
-    - service: play_rtttl
+  actions:
+    # Call the play_rtttl action to play any RTTTL song in the garage
+    - action: play_rtttl
       variables:
         song_str: string
       then:

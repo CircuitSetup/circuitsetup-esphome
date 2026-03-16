@@ -92,7 +92,7 @@ packages:
 
   remote_package:
     url: https://github.com/circuitsetup/circuitsetup-esphome
-    ref: master
+    ref: circuitsetup-gdo-dry-contact-v1.0-esphome-v2026.2.4
     refresh: 1d
     files:
 
@@ -155,7 +155,7 @@ packages:
 # Enables automatic discovery and upgrades via ESPHome Dashboard
 # more: https://esphome.io/guides/getting_started_hassio.html
 dashboard_import:
-  package_import_url: github://CircuitSetup/circuitsetup-esphome/circuitsetup-gdo-dry-contact.yaml@master
+  package_import_url: github://CircuitSetup/circuitsetup-esphome/circuitsetup-gdo-dry-contact.yaml@circuitsetup-gdo-dry-contact-v1.0-esphome-v2026.2.4
   import_full_config: false
 
 #### 
@@ -174,6 +174,9 @@ logger:
 # Enables the native ESPHome API
 # more: https://esphome.io/components/api.html
 api:
+  # Recommended for Home Assistant 2026.2+:
+  # encryption:
+  #   key: !secret api_encryption_key
 
 esp32_improv:
   authorizer: none

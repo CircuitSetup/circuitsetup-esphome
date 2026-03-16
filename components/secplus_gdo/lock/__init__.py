@@ -21,23 +21,16 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import lock
 
-from .. import SECPLUS_GDO_CONFIG_SCHEMA, secplus_gdo_ns, CONF_SECPLUS_GDO_ID
+from .. import CONF_SECPLUS_GDO_ID, SECPLUS_GDO_CONFIG_SCHEMA, secplus_gdo_ns, validate_cpp_symbol_id
 
 DEPENDENCIES = ["secplus_gdo"]
 
 GDOLock = secplus_gdo_ns.class_("GDOLock", lock.Lock, cg.Component)
 
-CONFIG_SCHEMA = (
-    lock.lock_schema(GDOLock)
-    .extend(
-        {
-            cv.GenerateID(): cv.declare_id(GDOLock),
-        }
-    )
-    .extend(SECPLUS_GDO_CONFIG_SCHEMA)
+CONFIG_SCHEMA = cv.All(
+    lock.lock_schema(GDOLock).extend(SECPLUS_GDO_CONFIG_SCHEMA),
+    validate_cpp_symbol_id,
 )
-
-
 
 async def to_code(config):
     var = await lock.new_lock(config)
