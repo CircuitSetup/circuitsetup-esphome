@@ -44,6 +44,7 @@ sensor:
     type: paired_devices_total
     name: Paired Devices
     accuracy_decimals: 0
+    icon: mdi:devices
     entity_category: diagnostic
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
@@ -51,6 +52,7 @@ sensor:
     type: paired_devices_remotes
     name: Paired Remotes
     accuracy_decimals: 0
+    icon: mdi:remote
     entity_category: diagnostic
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
@@ -58,6 +60,7 @@ sensor:
     type: paired_devices_keypads
     name: Paired Keypads
     accuracy_decimals: 0
+    icon: mdi:dialpad
     entity_category: diagnostic
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
@@ -65,6 +68,7 @@ sensor:
     type: paired_devices_wall_controls
     name: Paired Wall Controls
     accuracy_decimals: 0
+    icon: mdi:gesture-tap-button
     entity_category: diagnostic
   - platform: secplus_gdo
     secplus_gdo_id: cs_gdo
@@ -72,6 +76,7 @@ sensor:
     type: paired_devices_accessories
     name: Paired Accessories
     accuracy_decimals: 0
+    icon: mdi:puzzle-outline
     entity_category: diagnostic
 
 text_sensor:
@@ -160,12 +165,9 @@ button:
     id: reset_door_timings
     entity_category: config
     on_press:
-      - number.set:
-          id: gdo_open_duration
-          value: 0
-      - number.set:
-          id: gdo_close_duration
-          value: 0
+      - lambda: |-
+          id(gdo_open_duration).update_state(0);
+          id(gdo_close_duration).update_state(0);
       - button.press:
           id: restart_button
   - platform: template
@@ -179,9 +181,7 @@ button:
           uint32_t client_id = random_upper | 0x2908;
           ESP_LOGW("lambda","Re-syncing with Client ID: 0x%08X (%" PRIu32 ")", client_id, random_upper);
           id(gdo_client_id).update_state(client_id);
-      - number.set:
-          id: gdo_rolling_code
-          value: 0
+          id(gdo_rolling_code).update_state(0);
       - button.press:
           id: restart_button
 

@@ -39,7 +39,7 @@ TYPES = {
 }
 
 CONFIG_SCHEMA = cv.All(
-    sensor.sensor_schema(GDOStat)
+    sensor.sensor_schema(GDOStat, accuracy_decimals=0)
     .extend(
         {
             cv.Required(CONF_TYPE): cv.enum(TYPES, lower=True),
