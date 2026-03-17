@@ -6,7 +6,7 @@ ESPHome `2026.2.0+` custom component for Security+ garage door openers.
 
 ```yaml
 external_components:
-  - source: github://CircuitSetup/circuitsetup-esphome@circuitsetup-secplus-garage-door-opener-v1.4.5-esphome-v2026.2.4
+  - source: github://CircuitSetup/circuitsetup-esphome@master
     components: [secplus_gdo]
 
 secplus_gdo:
