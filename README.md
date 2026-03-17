@@ -8,7 +8,7 @@ For CircuitSetup Security+ hardware, the simplest starting point is:
 
 ```yaml
 packages:
-  circuitsetup.secplus-garage-door-opener: github://CircuitSetup/circuitsetup-esphome/circuitsetup-secplus-garage-door-opener.yaml@circuitsetup-secplus-garage-door-opener-v1.4.5-esphome-v2026.2.4
+  circuitsetup.secplus-garage-door-opener: github://CircuitSetup/circuitsetup-esphome/circuitsetup-secplus-garage-door-opener.yaml@master
 ```
 
 That package targets ESPHome `2026.2.0+`, imports the `secplus_gdo` component, and includes the standard light, cover, lock, warning, Wi-Fi, and diagnostics setup from a pinned release tag instead of a floating branch.
