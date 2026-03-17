@@ -170,21 +170,12 @@ logger:
   hardware_uart: UART0     # force CP2102N/TTL header
   baud_rate: 115200
   deassert_rts_dtr: true   # avoids missing boot logs on auto-reset boards
-  level: VERBOSE
+  level: DEBUG
   logs:
-    esp-idf: DEBUG
-    api: DEBUG
-    api.service: DEBUG
-    esp32_ble: DEBUG
-    esp32_ble_server: DEBUG
-    scheduler: DEBUG
-    esp32.preferences: DEBUG
-    sensor.filter: DEBUG
-    rtttl: DEBUG
-    cover: DEBUG
-    sensor: DEBUG
     ledc.output: INFO
+    sensor: INFO
     json: INFO
+    api: DEBUG
 
 ####
 # NATIVE API

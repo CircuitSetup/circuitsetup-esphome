@@ -4,6 +4,7 @@ wifi:
     - ble.disable:
   on_disconnect:
     - ble.enable:
+  power_save_mode: NONE
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
 
