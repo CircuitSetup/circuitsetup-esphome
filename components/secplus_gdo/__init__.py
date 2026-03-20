@@ -22,6 +22,7 @@ import esphome.config_validation as cv
 import voluptuous as vol
 from esphome import pins
 from esphome.const import CONF_ID
+from esphome.core import CORE
 
 DEPENDENCIES = ["preferences"]
 MULTI_CONF = True
@@ -53,5 +54,13 @@ SECPLUS_GDO_CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+
+    if CORE.is_esp32 and CORE.target_framework == "esp-idf":
+        # secplus_gdo needs to own the panic wrapper on ESP-IDF so the GDO TX pin can
+        # be forced into a safe state before panic output proceeds.
+        cg.add_build_unflag("-Wl,--wrap=esp_panic_handler")
+        cg.add_build_unflag("-DUSE_ESP32_CRASH_HANDLER")
+        cg.add_build_flag("-Wl,--wrap=esp_panic_handler")
+
     cg.add_define("GDO_UART_TX_PIN", config[CONF_OUTPUT_GDO]['number'])
     cg.add_define("GDO_UART_RX_PIN", config[CONF_INPUT_GDO]['number'])

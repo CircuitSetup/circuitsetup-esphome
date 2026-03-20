@@ -16,6 +16,7 @@
  */
 
 #include "secplus_gdo.h"
+#include "esphome/core/defines.h"
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
 #include "inttypes.h"
@@ -178,6 +179,9 @@ namespace secplus_gdo {
 
 // Need to wrap the panic handler to disable the GDO TX pin and pull the output high to
 // prevent spuriously triggering the GDO to open when the ESP32 panics.
+// ESPHome 2026.3.0+ provides its own ESP32 crash handler wrapper, so only install the
+// local wrapper when that built-in handler is not in use.
+#if !defined(USE_ESP32_CRASH_HANDLER)
 extern "C" {
 #include "hal/gpio_hal.h"
 
@@ -193,3 +197,4 @@ void __wrap_esp_panic_handler(void* info) {
     __real_esp_panic_handler(info);
 }
 } //extern "C"
+#endif

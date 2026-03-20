@@ -50,7 +50,7 @@ substitutions:
   name: circuitsetup-gdo
   friendly_name: Garage Door Opener
   project_name: circuitsetup.secplus-garage-door-opener
-  project_version: "1.4.5"
+  project_version: "1.4.6"
   garage_door_cover_name: Garage Door
   garage_light_name: Garage Light
   garage_openings_name: Garage Openings
@@ -198,5 +198,3 @@ esphome:
   platformio_options:
     lib_deps:
       - https://github.com/CircuitSetup/gdolib
-    build_flags:
-      - -Wl,--wrap=esp_panic_handler
