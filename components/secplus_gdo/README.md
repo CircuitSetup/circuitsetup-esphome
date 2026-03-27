@@ -2,6 +2,18 @@
 
 ESPHome `2026.2.0+` custom component for Security+ garage door openers.
 
+## When To Use This Path
+
+Use the full package YAML if you want the standard CircuitSetup hardware experience.
+
+Use the direct `secplus_gdo` component path when you want to:
+
+- Build a custom YAML from scratch
+- Use the component on a non-standard config
+- Edit the component locally during development
+
+The component starts automatically during setup. You do not need a separate `wifi.on_connect` automation to call `id(cs_gdo).start_gdo()`.
+
 ## Minimal Working Example
 
 ```yaml
@@ -42,9 +54,21 @@ binary_sensor:
     secplus_gdo_id: cs_gdo
 ```
 
-The component now starts automatically during setup. You do not need a separate `wifi.on_connect` automation to call `id(cs_gdo).start_gdo()`.
+## Local Development Workflow
 
-## Entity Types
+For local component edits, point `external_components` at the repo checkout instead of GitHub:
+
+```yaml
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [secplus_gdo]
+```
+
+If you also need to edit package files such as `packages/secplus-gdo.yaml` or `packages/wifi-esp32.yaml`, use a local copy of the full top-level YAML instead of the remote package import.
+
+## Supported Entity Types
 
 `binary_sensor` types:
 - `motion`
@@ -77,13 +101,27 @@ The component now starts automatically during setup. You do not need a separate 
 
 ## Cover Options
 
-- `secplus_gdo_id`: required parent component ID.
-- `pre_close_warning_duration`: optional warning delay before close commands.
-- `pre_close_warning_start`: optional automation that runs when the warning starts.
-- `pre_close_warning_end`: optional automation that runs when the warning ends or is cancelled.
+- `secplus_gdo_id`: required parent component ID
+- `pre_close_warning_duration`: optional warning delay before close commands
+- `pre_close_warning_start`: optional automation that runs when the warning starts
+- `pre_close_warning_end`: optional automation that runs when the warning ends or is cancelled
 
 `toggle_only` behavior is still supported through the dedicated `switch` entity. That mode is useful for openers that only accept toggle commands instead of discrete open/close commands.
 
+## Reserved IDs
+
+The component validates generated ESPHome IDs against gdolib symbol names so generated C++ does not collide with the library.
+
+Do not reuse IDs such as:
+
+- `gdo_lock`
+- `gdo_start`
+- `gdo_sync`
+- `gdo_set_rolling_code`
+- `gdo_light_on`
+
+If config validation reports a reserved ID, rename the ESPHome `id` to something project-specific such as `garage_lock_entity`, `shop_gdo_light`, or `cs_gdo`.
+
 ## Full Package Example
 
-For the complete CircuitSetup hardware package, see [packages/secplus-gdo.yaml](https://github.com/CircuitSetup/circuitsetup-esphome/blob/master/packages/secplus-gdo.yaml).
+For the complete CircuitSetup hardware package, see [`packages/secplus-gdo.yaml`](https://github.com/CircuitSetup/circuitsetup-esphome/blob/master/packages/secplus-gdo.yaml).
