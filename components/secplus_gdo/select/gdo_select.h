@@ -1,6 +1,7 @@
 /************************************
  *
  * Copyright (C) 2024 Konnected.io
+ * Copyright (C) 2026  CircuitSetup
  *
  * GNU GENERAL PUBLIC LICENSE
  ************************************/
