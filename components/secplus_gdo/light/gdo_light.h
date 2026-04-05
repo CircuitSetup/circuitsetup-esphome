@@ -28,7 +28,6 @@ namespace secplus_gdo {
 class GDOLight : public light::LightOutput, public Component {
     public:
         void dump_config() override { ESP_LOGCONFIG(TAG, "GDO light configured"); }
-
         light::LightTraits get_traits() override {
             auto traits = light::LightTraits();
             traits.set_supported_color_modes({light::ColorMode::ON_OFF});
