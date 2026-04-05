@@ -63,7 +63,7 @@ substitutions:
   garage_button_name: Wall Button
   garage_wireless_remote_name: Wireless Remote
   garage_sync_name: Synced
-  garage_battery_name: Battery
+  garage_battery_name: Battery #only used on certain GDO models with battery backups
   temp_update_interval: 60s
   temp_adjust: "0.8825" # 1-0.1175 - 11.75% decrease
   dew_point_offset: "1.3" # Offset in °F to correct sensor's lower dew point reading
@@ -93,7 +93,7 @@ substitutions:
   scl: GPIO15
 
 external_components:
-  - source: github://CircuitSetup/circuitsetup-esphome@circuitsetup-secplus-garage-door-opener-v1.4.5-esphome-v2026.2.4
+  - source: github://CircuitSetup/circuitsetup-esphome@master
     components: [ secplus_gdo ]
 
   # Un-comment below and comment above for local modification
@@ -110,7 +110,7 @@ packages:
 
   remote_package:
     url: https://github.com/CircuitSetup/circuitsetup-esphome
-    ref: circuitsetup-secplus-garage-door-opener-v1.4.5-esphome-v2026.2.4
+    ref: master
     refresh: 1d
     files:
 
@@ -160,7 +160,7 @@ packages:
 # Enables automatic discovery and upgrades via ESPHome Dashboard
 # more: https://esphome.io/guides/getting_started_hassio.html
 dashboard_import:
-  package_import_url: github://CircuitSetup/circuitsetup-esphome/circuitsetup-secplus-garage-door-opener.yaml@circuitsetup-secplus-garage-door-opener-v1.4.5-esphome-v2026.2.4
+  package_import_url: github://CircuitSetup/circuitsetup-esphome/circuitsetup-secplus-garage-door-opener.yaml@master
   import_full_config: false
 
 ####
