@@ -23,7 +23,7 @@ from esphome import automation
 from esphome.components import cover
 from esphome.const import CONF_TRIGGER_ID
 
-from .. import SECPLUS_GDO_CONFIG_SCHEMA, secplus_gdo_ns, CONF_SECPLUS_GDO_ID
+from .. import CONF_SECPLUS_GDO_ID, SECPLUS_GDO_CONFIG_SCHEMA, secplus_gdo_ns, validate_cpp_symbol_id
 
 DEPENDENCIES = ["secplus_gdo"]
 
@@ -41,7 +41,7 @@ CONF_PRE_CLOSE_WARNING_DURATION = "pre_close_warning_duration"
 CONF_PRE_CLOSE_WARNING_START = "pre_close_warning_start"
 CONF_PRE_CLOSE_WARNING_END = "pre_close_warning_end"
 
-CONFIG_SCHEMA = (
+CONFIG_SCHEMA = cv.All(
     cover.cover_schema(GDODoor)
     .extend(
         {
@@ -53,7 +53,8 @@ CONFIG_SCHEMA = (
                 {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(CoverClosingEndTrigger)}
             ),
         }
-    ).extend(SECPLUS_GDO_CONFIG_SCHEMA)
+    ).extend(SECPLUS_GDO_CONFIG_SCHEMA),
+    validate_cpp_symbol_id,
 )
 
 async def to_code(config):

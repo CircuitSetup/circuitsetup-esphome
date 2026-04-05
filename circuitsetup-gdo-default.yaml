@@ -1,2 +1,10 @@
+# CircuitSetup Security+ Garage Door Opener starter import.
+#
+# Use this file when you want the quickest setup path in ESPHome Dashboard.
+# For common customizations such as entity names, warning timing, logger level,
+# or Wi-Fi behavior, open `circuitsetup-secplus-garage-door-opener.yaml`.
+# For package-level or component-level customization, use a local checkout of
+# this repo instead of editing the remote package import.
+
 packages:
   circuitsetup.secplus-garage-door-opener: github://CircuitSetup/circuitsetup-esphome/circuitsetup-secplus-garage-door-opener.yaml@master

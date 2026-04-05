@@ -65,3 +65,5 @@ button:
 ota:
   - platform: esphome
     id: circuitsetup_ota
+    # Recommended for shared networks:
+    # password: !secret ota_password
