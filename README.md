@@ -5,13 +5,15 @@ This repository builds on the original garage door opener work from [Konnected I
 
 ## Choose a Starting Point
 
-Use the repo in one of these three ways:
+Use CircuitSetup garage door firmware in one of these four ways:
 
-1. [`circuitsetup-gdo-default.yaml`](circuitsetup-gdo-default.yaml)
+1. [CircuitSetup ESP Web Installer](https://circuitsetup.github.io/ESPWebInstaller/)
+   The quickest path if you want pre-compiled firmware and browser-based flashing.
+2. [`circuitsetup-gdo-default.yaml`](circuitsetup-gdo-default.yaml)
    The simplest starter/import path for CircuitSetup Security+ hardware.
-2. [`circuitsetup-secplus-garage-door-opener.yaml`](circuitsetup-secplus-garage-door-opener.yaml)
+3. [`circuitsetup-secplus-garage-door-opener.yaml`](circuitsetup-secplus-garage-door-opener.yaml)
    The full editable reference config for the Security+ opener.
-3. [`components/secplus_gdo/README.md`](components/secplus_gdo/README.md)
+4. [`components/secplus_gdo/README.md`](components/secplus_gdo/README.md)
    The advanced path for direct `external_components` usage and fully custom YAML.
 
 For most users, start with the default or full Security+ YAML and only edit the documented substitutions near the top of the file.
