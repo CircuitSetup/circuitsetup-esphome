@@ -38,7 +38,11 @@ namespace secplus_gdo {
 
         switch (event) {
         case GDO_CB_EVENT_SYNCED: {
-            ESP_LOGI(TAG, "Synced: %s, protocol: %s", status->synced ? "true" : "false",
+            const bool has_opener_status = status->door != GDO_DOOR_STATE_UNKNOWN;
+            const bool rolling_code_accepted = has_opener_status || gdo->is_sync_state();
+            bool effective_synced = status->synced || rolling_code_accepted;
+            ESP_LOGI(TAG, "Synced: %s, gdolib diagnostic sync: %s, protocol: %s",
+                     effective_synced ? "true" : "false", status->synced ? "complete" : "incomplete",
                      gdo_protocol_type_to_string(status->protocol));
             if (status->protocol == GDO_PROTOCOL_SEC_PLUS_V2) {
                 ESP_LOGI(TAG, "Client ID: %" PRIu32 ", Rolling code: %" PRIu32, status->client_id, status->rolling_code);
@@ -49,12 +53,11 @@ namespace secplus_gdo {
                 }
             }
 
-            const bool has_opener_status = status->door != GDO_DOOR_STATE_UNKNOWN;
-            bool effective_synced = status->synced;
             if (!status->synced) {
-                if (has_opener_status || gdo->is_sync_state()) {
-                    ESP_LOGW(TAG, "Skipping rolling-code advance after failed sync completion with opener status");
-                    effective_synced = true;
+                if (rolling_code_accepted) {
+                    ESP_LOGI(TAG,
+                             "Rolling code accepted; opener status received before full diagnostic sync completed, not "
+                             "advancing rolling code");
                 } else {
                     const auto next_rolling_code = status->rolling_code + 100;
                     if (gdo_set_rolling_code(next_rolling_code) != ESP_OK) {
