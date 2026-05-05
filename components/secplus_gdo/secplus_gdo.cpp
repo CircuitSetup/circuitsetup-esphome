@@ -37,7 +37,7 @@ namespace secplus_gdo {
         }
 
         switch (event) {
-        case GDO_CB_EVENT_SYNCED:
+        case GDO_CB_EVENT_SYNCED: {
             ESP_LOGI(TAG, "Synced: %s, protocol: %s", status->synced ? "true" : "false",
                      gdo_protocol_type_to_string(status->protocol));
             if (status->protocol == GDO_PROTOCOL_SEC_PLUS_V2) {
@@ -73,6 +73,7 @@ namespace secplus_gdo {
 
             gdo->set_sync_state(effective_synced);
             break;
+        }
         case GDO_CB_EVENT_LIGHT:
             gdo->set_light_state(status->light);
             break;
