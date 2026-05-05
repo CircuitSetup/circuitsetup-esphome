@@ -49,22 +49,29 @@ namespace secplus_gdo {
                 }
             }
 
+            const bool has_opener_status = status->door != GDO_DOOR_STATE_UNKNOWN;
+            bool effective_synced = status->synced;
             if (!status->synced) {
-                const auto next_rolling_code = status->rolling_code + 100;
-                if (gdo_set_rolling_code(next_rolling_code) != ESP_OK) {
-                    ESP_LOGE(TAG, "Failed to set rolling code");
+                if (has_opener_status || gdo->is_sync_state()) {
+                    ESP_LOGW(TAG, "Skipping rolling-code advance after failed sync completion with opener status");
+                    effective_synced = true;
                 } else {
-                    ESP_LOGI(TAG, "Rolling code set to %" PRIu32 ", retrying sync", next_rolling_code);
-                    const auto err = gdo_sync();
-                    if (err != ESP_OK) {
-                        ESP_LOGE(TAG, "Failed to start resync: %s", esp_err_to_name(err));
+                    const auto next_rolling_code = status->rolling_code + 100;
+                    if (gdo_set_rolling_code(next_rolling_code) != ESP_OK) {
+                        ESP_LOGE(TAG, "Failed to set rolling code");
+                    } else {
+                        ESP_LOGI(TAG, "Rolling code set to %" PRIu32 ", retrying sync", next_rolling_code);
+                        const auto err = gdo_sync();
+                        if (err != ESP_OK) {
+                            ESP_LOGE(TAG, "Failed to start resync: %s", esp_err_to_name(err));
+                        }
                     }
                 }
             } else {
                 gdo->set_protocol_state(status->protocol);
             }
 
-            gdo->set_sync_state(status->synced);
+            gdo->set_sync_state(effective_synced);
             break;
         case GDO_CB_EVENT_LIGHT:
             gdo->set_light_state(status->light);
@@ -211,19 +218,19 @@ namespace secplus_gdo {
         switch (num->get_type()) {
         case GDONumberType::OPEN_DURATION:
             this->open_duration_ = num;
-            num->set_control_function([](float value) { return gdo_set_open_duration(static_cast<uint16_t>(value)); });
+            num->set_control_function([](double value) { return gdo_set_open_duration(static_cast<uint16_t>(value)); });
             break;
         case GDONumberType::CLOSE_DURATION:
             this->close_duration_ = num;
-            num->set_control_function([](float value) { return gdo_set_close_duration(static_cast<uint16_t>(value)); });
+            num->set_control_function([](double value) { return gdo_set_close_duration(static_cast<uint16_t>(value)); });
             break;
         case GDONumberType::CLIENT_ID:
             this->client_id_ = num;
-            num->set_control_function([](float value) { return gdo_set_client_id(static_cast<uint32_t>(value)); });
+            num->set_control_function([](double value) { return gdo_set_client_id(static_cast<uint32_t>(value)); });
             break;
         case GDONumberType::ROLLING_CODE:
             this->rolling_code_ = num;
-            num->set_control_function([](float value) { return gdo_set_rolling_code(static_cast<uint32_t>(value)); });
+            num->set_control_function([](double value) { return gdo_set_rolling_code(static_cast<uint32_t>(value)); });
             break;
         }
     }

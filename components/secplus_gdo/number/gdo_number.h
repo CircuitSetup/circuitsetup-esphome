@@ -45,18 +45,26 @@ public:
     void setup() override {
         double value = 0;
         this->pref_ = this->make_entity_preference<double>();
-        if (!this->pref_.load(&value)) {
+        if (this->pref_.load(&value)) {
+            this->apply_value_(value);
             return;
         }
 
-        this->control(static_cast<float>(value));
+        // Older firmware stored GDONumber values as float. Try that once so
+        // existing rolling-code preferences are not silently discarded.
+        float legacy_value = 0.0f;
+        auto legacy_pref = this->make_entity_preference<float>();
+        if (legacy_pref.load(&legacy_value)) {
+            this->apply_value_(static_cast<double>(legacy_value));
+        }
     }
 
     void update_state(double value) {
-        if (this->has_state_ && value == this->state) {
+        if (this->has_state_ && value == this->value_) {
             return;
         }
 
+        this->value_ = value;
         this->state = static_cast<float>(value);
         this->publish_state(static_cast<float>(value));
         this->pref_.save(&value);
@@ -64,7 +72,14 @@ public:
     }
 
     void control(float value) override {
-        if (this->has_state_ && value == this->state) {
+        this->apply_value_(static_cast<double>(value));
+    }
+
+    void set_control_function(std::function<esp_err_t(double)> f) { this->f_control = std::move(f); }
+
+protected:
+    void apply_value_(double value) {
+        if (this->has_state_ && value == this->value_) {
             return;
         }
 
@@ -82,9 +97,6 @@ public:
         this->update_state(value);
     }
 
-    void set_control_function(std::function<esp_err_t(float)> f) { this->f_control = std::move(f); }
-
-protected:
     const char *type_to_string_() const {
         switch (this->type_) {
         case GDONumberType::OPEN_DURATION:
@@ -102,7 +114,8 @@ protected:
 
     GDONumberType type_{GDONumberType::OPEN_DURATION};
     ESPPreferenceObject pref_;
-    std::function<esp_err_t(float)> f_control{nullptr};
+    std::function<esp_err_t(double)> f_control{nullptr};
+    double value_{0};
     bool has_state_{false};
     static constexpr const char *TAG = "gdo.number";
 };

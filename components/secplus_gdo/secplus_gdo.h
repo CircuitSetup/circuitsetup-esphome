@@ -121,6 +121,7 @@ namespace secplus_gdo {
             }
         }
 
+        bool is_sync_state() const { return this->status_.synced; }
         void set_sync_state(bool synced);
 
     protected:
