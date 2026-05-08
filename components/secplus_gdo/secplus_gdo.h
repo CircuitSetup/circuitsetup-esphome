@@ -119,6 +119,8 @@ namespace secplus_gdo {
 
         bool is_sync_state() const { return this->status_.synced; }
         uint32_t next_rolling_code_search_value(uint32_t fallback);
+        void schedule_diagnostic_sync_retry();
+        void reset_diagnostic_sync_retries();
         void set_sync_state(bool synced);
 
     protected:
@@ -157,6 +159,7 @@ namespace secplus_gdo {
         bool              button_triggered_{false};
         bool              has_last_known_rolling_code_{false};
         bool              has_rolling_code_search_value_{false};
+        uint8_t           diagnostic_sync_retry_count_{0};
         uint32_t          last_known_rolling_code_{0};
         uint32_t          rolling_code_search_value_{0};
 

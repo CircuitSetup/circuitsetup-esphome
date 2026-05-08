@@ -44,6 +44,9 @@ namespace secplus_gdo {
             ESP_LOGI(TAG, "Synced: %s, gdolib diagnostic sync: %s, protocol: %s",
                      effective_synced ? "true" : "false", status->synced ? "complete" : "incomplete",
                      gdo_protocol_type_to_string(status->protocol));
+            if (status->synced) {
+                gdo->reset_diagnostic_sync_retries();
+            }
             if (status->protocol == GDO_PROTOCOL_SEC_PLUS_V2) {
                 ESP_LOGI(TAG, "Client ID: %" PRIu32 ", Rolling code: %" PRIu32, status->client_id, status->rolling_code);
                 if (status->synced) {
@@ -57,7 +60,8 @@ namespace secplus_gdo {
                 if (rolling_code_accepted) {
                     ESP_LOGI(TAG,
                              "Rolling code accepted; opener status received before full diagnostic sync completed, not "
-                             "advancing rolling code");
+                             "advancing rolling code; retrying diagnostic sync without advancing rolling code");
+                    gdo->schedule_diagnostic_sync_retry();
                 } else {
                     const auto next_rolling_code = gdo->next_rolling_code_search_value(status->rolling_code);
                     if (gdo_set_rolling_code(next_rolling_code) != ESP_OK) {
@@ -455,6 +459,34 @@ namespace secplus_gdo {
         this->has_rolling_code_search_value_ = true;
         return next;
     }
+
+    void GDOComponent::schedule_diagnostic_sync_retry() {
+        constexpr uint8_t MAX_DIAGNOSTIC_SYNC_RETRIES = 3;
+
+        if (!this->initialized_ || !this->started_) {
+            ESP_LOGD(TAG, "Skipping diagnostic sync retry because secplus GDO is not started");
+            return;
+        }
+
+        if (this->diagnostic_sync_retry_count_ >= MAX_DIAGNOSTIC_SYNC_RETRIES) {
+            ESP_LOGW(TAG, "Diagnostic sync incomplete after %u retries; waiting for the next sync request",
+                     this->diagnostic_sync_retry_count_);
+            return;
+        }
+
+        this->diagnostic_sync_retry_count_++;
+        const auto retry_count = this->diagnostic_sync_retry_count_;
+        this->set_timeout("diagnostic_sync_retry", 1000, [retry_count]() {
+            const auto err = gdo_sync();
+            if (err != ESP_OK) {
+                ESP_LOGW(TAG, "Diagnostic sync retry %u did not start: %s", retry_count, esp_err_to_name(err));
+            } else {
+                ESP_LOGI(TAG, "Diagnostic sync retry %u started", retry_count);
+            }
+        });
+    }
+
+    void GDOComponent::reset_diagnostic_sync_retries() { this->diagnostic_sync_retry_count_ = 0; }
 
     void GDOComponent::set_rolling_code(uint32_t num) {
         this->remember_rolling_code_(num);
