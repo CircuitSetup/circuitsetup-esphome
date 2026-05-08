@@ -47,7 +47,7 @@ namespace secplus_gdo {
             if (status->protocol == GDO_PROTOCOL_SEC_PLUS_V2) {
                 ESP_LOGI(TAG, "Client ID: %" PRIu32 ", Rolling code: %" PRIu32, status->client_id, status->rolling_code);
                 if (status->synced) {
-                    // Save the last successful ClientID rolling code value to NVS for use on reboot
+                    // Save the last successful ClientID rolling code value to NVS for use on reboot.
                     gdo->set_client_id(status->client_id);
                     gdo->set_rolling_code(status->rolling_code);
                 }
@@ -59,11 +59,11 @@ namespace secplus_gdo {
                              "Rolling code accepted; opener status received before full diagnostic sync completed, not "
                              "advancing rolling code");
                 } else {
-                    const auto next_rolling_code = status->rolling_code + 100;
+                    const auto next_rolling_code = gdo->next_rolling_code_search_value(status->rolling_code);
                     if (gdo_set_rolling_code(next_rolling_code) != ESP_OK) {
                         ESP_LOGE(TAG, "Failed to set rolling code");
                     } else {
-                        ESP_LOGI(TAG, "Rolling code set to %" PRIu32 ", retrying sync", next_rolling_code);
+                        ESP_LOGI(TAG, "Rolling code search advanced to %" PRIu32 ", retrying sync", next_rolling_code);
                         const auto err = gdo_sync();
                         if (err != ESP_OK) {
                             ESP_LOGE(TAG, "Failed to start resync: %s", esp_err_to_name(err));
@@ -234,7 +234,14 @@ namespace secplus_gdo {
             break;
         case GDONumberType::ROLLING_CODE:
             this->rolling_code_ = num;
-            num->set_control_function([](double value) { return gdo_set_rolling_code(static_cast<uint32_t>(value)); });
+            num->set_control_function([this](double value) {
+                const auto rolling_code = static_cast<uint32_t>(value);
+                const auto err = gdo_set_rolling_code(rolling_code);
+                if (err == ESP_OK) {
+                    this->remember_rolling_code_(rolling_code);
+                }
+                return err;
+            });
             break;
         }
     }
@@ -426,6 +433,35 @@ namespace secplus_gdo {
 
         this->initialized_ = false;
         this->started_ = false;
+    }
+
+    void GDOComponent::remember_rolling_code_(uint32_t num) {
+        this->last_known_rolling_code_ = num;
+        this->rolling_code_search_value_ = num;
+        this->has_last_known_rolling_code_ = true;
+        this->has_rolling_code_search_value_ = false;
+    }
+
+    uint32_t GDOComponent::next_rolling_code_search_value(uint32_t fallback) {
+        if (!this->has_last_known_rolling_code_) {
+            this->last_known_rolling_code_ = fallback;
+            this->has_last_known_rolling_code_ = true;
+        }
+
+        const auto base =
+            this->has_rolling_code_search_value_ ? this->rolling_code_search_value_ : this->last_known_rolling_code_;
+        const auto next = base + 100;
+        this->rolling_code_search_value_ = next;
+        this->has_rolling_code_search_value_ = true;
+        return next;
+    }
+
+    void GDOComponent::set_rolling_code(uint32_t num) {
+        this->remember_rolling_code_(num);
+
+        if (this->rolling_code_ != nullptr) {
+            this->rolling_code_->update_state(num);
+        }
     }
 
     void GDOComponent::set_sync_state(bool synced) {
