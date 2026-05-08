@@ -44,10 +44,13 @@ namespace secplus_gdo {
             ESP_LOGI(TAG, "Synced: %s, gdolib diagnostic sync: %s, protocol: %s",
                      effective_synced ? "true" : "false", status->synced ? "complete" : "incomplete",
                      gdo_protocol_type_to_string(status->protocol));
+            if (status->synced) {
+                gdo->reset_diagnostic_resync_state();
+            }
             if (status->protocol == GDO_PROTOCOL_SEC_PLUS_V2) {
                 ESP_LOGI(TAG, "Client ID: %" PRIu32 ", Rolling code: %" PRIu32, status->client_id, status->rolling_code);
                 if (status->synced) {
-                    // Save the last successful ClientID rolling code value to NVS for use on reboot
+                    // Save the last successful ClientID rolling code value to NVS for use on reboot.
                     gdo->set_client_id(status->client_id);
                     gdo->set_rolling_code(status->rolling_code);
                 }
@@ -57,13 +60,14 @@ namespace secplus_gdo {
                 if (rolling_code_accepted) {
                     ESP_LOGI(TAG,
                              "Rolling code accepted; opener status received before full diagnostic sync completed, not "
-                             "advancing rolling code");
+                             "advancing rolling code; restarting gdolib driver to retry diagnostic data sync");
+                    gdo->schedule_diagnostic_data_resync();
                 } else {
-                    const auto next_rolling_code = status->rolling_code + 100;
+                    const auto next_rolling_code = gdo->next_rolling_code_search_value(status->rolling_code);
                     if (gdo_set_rolling_code(next_rolling_code) != ESP_OK) {
                         ESP_LOGE(TAG, "Failed to set rolling code");
                     } else {
-                        ESP_LOGI(TAG, "Rolling code set to %" PRIu32 ", retrying sync", next_rolling_code);
+                        ESP_LOGI(TAG, "Rolling code search advanced to %" PRIu32 ", retrying sync", next_rolling_code);
                         const auto err = gdo_sync();
                         if (err != ESP_OK) {
                             ESP_LOGE(TAG, "Failed to start resync: %s", esp_err_to_name(err));
@@ -234,7 +238,14 @@ namespace secplus_gdo {
             break;
         case GDONumberType::ROLLING_CODE:
             this->rolling_code_ = num;
-            num->set_control_function([](double value) { return gdo_set_rolling_code(static_cast<uint32_t>(value)); });
+            num->set_control_function([this](double value) {
+                const auto rolling_code = static_cast<uint32_t>(value);
+                const auto err = gdo_set_rolling_code(rolling_code);
+                if (err == ESP_OK) {
+                    this->remember_rolling_code_(rolling_code);
+                }
+                return err;
+            });
             break;
         }
     }
@@ -328,6 +339,23 @@ namespace secplus_gdo {
         }
     }
 
+    esp_err_t GDOComponent::init_driver_() {
+        gdo_config_t gdo_conf = {
+            .uart_num = UART_NUM_1,
+            .obst_from_status = true,
+            .invert_uart = true,
+            .uart_tx_pin = (gpio_num_t) GDO_UART_TX_PIN,
+            .uart_rx_pin = (gpio_num_t) GDO_UART_RX_PIN,
+            .obst_in_pin = (gpio_num_t) -1,
+        };
+
+        const auto err = gdo_init(&gdo_conf);
+        if (err == ESP_OK) {
+            this->initialized_ = true;
+        }
+        return err;
+    }
+
     void GDOComponent::sync_toggle_only_() {
         bool toggle_only = this->status_.toggle_only;
         if (this->toggle_only_switch_ != nullptr) {
@@ -371,23 +399,12 @@ namespace secplus_gdo {
         this->status_ = {};
 
         // Initialize the driver first so child entities can restore saved preferences before we start it.
-        gdo_config_t gdo_conf = {
-            .uart_num = UART_NUM_1,
-            .obst_from_status = true,
-            .invert_uart = true,
-            .uart_tx_pin = (gpio_num_t) GDO_UART_TX_PIN,
-            .uart_rx_pin = (gpio_num_t) GDO_UART_RX_PIN,
-            .obst_in_pin = (gpio_num_t) -1,
-        };
-
-        const auto init_err = gdo_init(&gdo_conf);
+        const auto init_err = this->init_driver_();
         if (init_err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize secplus GDO: %s", esp_err_to_name(init_err));
             this->mark_failed();
             return;
         }
-
-        this->initialized_ = true;
 
         const auto status_err = gdo_get_status(&this->status_);
         if (status_err != ESP_OK) {
@@ -426,6 +443,135 @@ namespace secplus_gdo {
 
         this->initialized_ = false;
         this->started_ = false;
+    }
+
+    void GDOComponent::remember_rolling_code_(uint32_t num) {
+        this->last_known_rolling_code_ = num;
+        this->rolling_code_search_value_ = num;
+        this->has_last_known_rolling_code_ = true;
+        this->has_rolling_code_search_value_ = false;
+    }
+
+    uint32_t GDOComponent::next_rolling_code_search_value(uint32_t fallback) {
+        if (!this->has_last_known_rolling_code_) {
+            this->last_known_rolling_code_ = fallback;
+            this->has_last_known_rolling_code_ = true;
+        }
+
+        const auto base =
+            this->has_rolling_code_search_value_ ? this->rolling_code_search_value_ : this->last_known_rolling_code_;
+        const auto next = base + 100;
+        this->rolling_code_search_value_ = next;
+        this->has_rolling_code_search_value_ = true;
+        return next;
+    }
+
+    void GDOComponent::schedule_diagnostic_data_resync() {
+        if (!this->initialized_ || !this->started_) {
+            ESP_LOGD(TAG, "Skipping diagnostic data resync because secplus GDO is not started");
+            return;
+        }
+
+        ESP_LOGW(TAG, "Diagnostic sync incomplete after accepted rolling code; restarting gdolib driver to retry data sync");
+        this->schedule_diagnostic_driver_restart_();
+    }
+
+    void GDOComponent::schedule_diagnostic_driver_restart_() {
+        if (this->diagnostic_driver_restart_attempted_) {
+            ESP_LOGW(TAG,
+                     "Diagnostic sync still incomplete after gdolib driver restart; waiting for external sync request");
+            return;
+        }
+
+        this->diagnostic_driver_restart_attempted_ = true;
+        this->set_timeout("diagnostic_driver_restart", 1000,
+                          [this]() { this->restart_driver_for_diagnostic_sync_(); });
+    }
+
+    void GDOComponent::restart_driver_for_diagnostic_sync_() {
+        if (!this->initialized_) {
+            ESP_LOGD(TAG, "Skipping gdolib driver restart because secplus GDO is not initialized");
+            return;
+        }
+
+        gdo_status_t status{};
+        const auto status_err = gdo_get_status(&status);
+        if (status_err != ESP_OK) {
+            ESP_LOGW(TAG, "Skipping gdolib driver restart because status could not be read: %s",
+                     esp_err_to_name(status_err));
+            return;
+        }
+
+        if (status.protocol != GDO_PROTOCOL_SEC_PLUS_V2) {
+            ESP_LOGW(TAG, "Skipping gdolib driver restart for diagnostic sync on protocol: %s",
+                     gdo_protocol_type_to_string(status.protocol));
+            return;
+        }
+
+        const auto client_id = status.client_id;
+        const auto rolling_code = status.rolling_code;
+        ESP_LOGW(TAG,
+                 "Restarting gdolib driver for diagnostic sync with Client ID: %" PRIu32
+                 ", Rolling code: %" PRIu32,
+                 client_id, rolling_code);
+
+        this->set_sync_state(false);
+
+        const auto deinit_err = gdo_deinit();
+        if (deinit_err != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to deinitialize secplus GDO for diagnostic sync restart: %s",
+                     esp_err_to_name(deinit_err));
+            return;
+        }
+
+        this->initialized_ = false;
+        this->started_ = false;
+        this->status_ = {};
+
+        const auto init_err = this->init_driver_();
+        if (init_err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to reinitialize secplus GDO for diagnostic sync restart: %s",
+                     esp_err_to_name(init_err));
+            this->mark_failed();
+            return;
+        }
+
+        const auto protocol_err = gdo_set_protocol(GDO_PROTOCOL_SEC_PLUS_V2);
+        if (protocol_err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to restore Security+ 2.0 protocol after gdolib driver restart: %s",
+                     esp_err_to_name(protocol_err));
+            return;
+        }
+
+        const auto client_id_err = gdo_set_client_id(client_id);
+        if (client_id_err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to restore Client ID after gdolib driver restart: %s",
+                     esp_err_to_name(client_id_err));
+            return;
+        }
+
+        const auto rolling_code_err = gdo_set_rolling_code(rolling_code);
+        if (rolling_code_err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to restore rolling code after gdolib driver restart: %s",
+                     esp_err_to_name(rolling_code_err));
+            return;
+        }
+
+        this->remember_rolling_code_(rolling_code);
+        this->sync_toggle_only_();
+        this->start_if_ready_();
+    }
+
+    void GDOComponent::reset_diagnostic_resync_state() {
+        this->diagnostic_driver_restart_attempted_ = false;
+    }
+
+    void GDOComponent::set_rolling_code(uint32_t num) {
+        this->remember_rolling_code_(num);
+
+        if (this->rolling_code_ != nullptr) {
+            this->rolling_code_->update_state(num);
+        }
     }
 
     void GDOComponent::set_sync_state(bool synced) {

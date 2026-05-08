@@ -115,16 +115,19 @@ namespace secplus_gdo {
                 this->client_id_->update_state(num);
             }
         }
-        void set_rolling_code(uint32_t num) {
-            if (this->rolling_code_ != nullptr) {
-                this->rolling_code_->update_state(num);
-            }
-        }
+        void set_rolling_code(uint32_t num);
 
         bool is_sync_state() const { return this->status_.synced; }
+        uint32_t next_rolling_code_search_value(uint32_t fallback);
+        void schedule_diagnostic_data_resync();
+        void reset_diagnostic_resync_state();
         void set_sync_state(bool synced);
 
     protected:
+        esp_err_t init_driver_();
+        void remember_rolling_code_(uint32_t num);
+        void schedule_diagnostic_driver_restart_();
+        void restart_driver_for_diagnostic_sync_();
         void sync_toggle_only_();
         void start_if_ready_();
 
@@ -157,6 +160,11 @@ namespace secplus_gdo {
         bool              started_{false};
         bool              cover_triggered_{false};
         bool              button_triggered_{false};
+        bool              has_last_known_rolling_code_{false};
+        bool              has_rolling_code_search_value_{false};
+        bool              diagnostic_driver_restart_attempted_{false};
+        uint32_t          last_known_rolling_code_{0};
+        uint32_t          rolling_code_search_value_{0};
 
     }; // GDOComponent
 
