@@ -124,7 +124,10 @@ namespace secplus_gdo {
         void set_sync_state(bool synced);
 
     protected:
+        esp_err_t init_driver_();
         void remember_rolling_code_(uint32_t num);
+        void schedule_diagnostic_driver_restart_();
+        void restart_driver_for_diagnostic_sync_();
         void sync_toggle_only_();
         void start_if_ready_();
 
@@ -159,6 +162,7 @@ namespace secplus_gdo {
         bool              button_triggered_{false};
         bool              has_last_known_rolling_code_{false};
         bool              has_rolling_code_search_value_{false};
+        bool              diagnostic_driver_restart_attempted_{false};
         uint8_t           diagnostic_sync_retry_count_{0};
         uint32_t          last_known_rolling_code_{0};
         uint32_t          rolling_code_search_value_{0};
