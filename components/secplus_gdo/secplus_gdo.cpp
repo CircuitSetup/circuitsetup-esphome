@@ -424,6 +424,22 @@ namespace secplus_gdo {
 
         this->sync_toggle_only_();
         this->defer([this]() { this->start_if_ready_(); });
+        this->set_timeout("startup_secplus_status_log", 20000, []() {
+            gdo_status_t status{};
+            const auto err = gdo_get_status(&status);
+            if (err != ESP_OK) {
+                ESP_LOGW(TAG, "Failed to read startup Security+ status: %s", esp_err_to_name(err));
+                return;
+            }
+
+            if (status.protocol == GDO_PROTOCOL_SEC_PLUS_V2) {
+                ESP_LOGI(TAG,
+                         "Startup Security+ state: opener status: %s, gdolib diagnostic sync: %s, Client ID: %" PRIu32
+                         ", Rolling code: %" PRIu32,
+                         status.door != GDO_DOOR_STATE_UNKNOWN ? "received" : "not received",
+                         status.synced ? "complete" : "incomplete", status.client_id, status.rolling_code);
+            }
+        });
     }
 
     void GDOComponent::dump_config() {
