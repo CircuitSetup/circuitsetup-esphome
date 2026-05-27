@@ -28,6 +28,8 @@ namespace esphome {
 namespace secplus_gdo {
 
     constexpr char TAG[] = "secplus_gdo";
+    constexpr uint8_t ROLLING_CODE_ANCHOR_RETRIES = 3;
+    constexpr uint8_t MAX_DIAGNOSTIC_DRIVER_RESTARTS = 3;
 
     static void gdo_event_handler(const gdo_status_t *status, gdo_cb_event_t event, void *arg) {
         auto *gdo = static_cast<GDOComponent *>(arg);
@@ -49,8 +51,8 @@ namespace secplus_gdo {
             }
             if (status->protocol == GDO_PROTOCOL_SEC_PLUS_V2) {
                 ESP_LOGI(TAG, "Client ID: %" PRIu32 ", Rolling code: %" PRIu32, status->client_id, status->rolling_code);
-                if (status->synced) {
-                    // Save the last successful ClientID rolling code value to NVS for use on reboot.
+                if (status->synced || has_opener_status) {
+                    // Save the last rolling code value proven by the opener for use on reboot.
                     gdo->set_client_id(status->client_id);
                     gdo->set_rolling_code(status->rolling_code);
                 }
@@ -63,11 +65,18 @@ namespace secplus_gdo {
                              "advancing rolling code; restarting gdolib driver to retry diagnostic data sync");
                     gdo->schedule_diagnostic_data_resync();
                 } else {
-                    const auto next_rolling_code = gdo->next_rolling_code_search_value(status->rolling_code);
+                    bool rolling_code_search_advanced = false;
+                    const auto next_rolling_code =
+                        gdo->next_rolling_code_search_value(status->rolling_code, &rolling_code_search_advanced);
                     if (gdo_set_rolling_code(next_rolling_code) != ESP_OK) {
                         ESP_LOGE(TAG, "Failed to set rolling code");
                     } else {
-                        ESP_LOGI(TAG, "Rolling code search advanced to %" PRIu32 ", retrying sync", next_rolling_code);
+                        if (rolling_code_search_advanced) {
+                            ESP_LOGI(TAG, "Rolling code search advanced to %" PRIu32 ", retrying sync",
+                                     next_rolling_code);
+                        } else {
+                            ESP_LOGI(TAG, "Retrying rolling code anchor %" PRIu32, next_rolling_code);
+                        }
                         const auto err = gdo_sync();
                         if (err != ESP_OK) {
                             ESP_LOGE(TAG, "Failed to start resync: %s", esp_err_to_name(err));
@@ -409,6 +418,8 @@ namespace secplus_gdo {
         const auto status_err = gdo_get_status(&this->status_);
         if (status_err != ESP_OK) {
             ESP_LOGW(TAG, "Failed to load initial GDO status: %s", esp_err_to_name(status_err));
+        } else if (this->status_.rolling_code != 0) {
+            this->remember_rolling_code_(this->status_.rolling_code);
         }
 
         this->sync_toggle_only_();
@@ -450,12 +461,25 @@ namespace secplus_gdo {
         this->rolling_code_search_value_ = num;
         this->has_last_known_rolling_code_ = true;
         this->has_rolling_code_search_value_ = false;
+        this->rolling_code_anchor_retries_remaining_ = ROLLING_CODE_ANCHOR_RETRIES;
     }
 
-    uint32_t GDOComponent::next_rolling_code_search_value(uint32_t fallback) {
+    uint32_t GDOComponent::next_rolling_code_search_value(uint32_t fallback, bool *advanced) {
+        if (advanced != nullptr) {
+            *advanced = false;
+        }
+
         if (!this->has_last_known_rolling_code_) {
             this->last_known_rolling_code_ = fallback;
             this->has_last_known_rolling_code_ = true;
+            this->rolling_code_anchor_retries_remaining_ = ROLLING_CODE_ANCHOR_RETRIES;
+        }
+
+        if (this->rolling_code_anchor_retries_remaining_ > 0) {
+            this->rolling_code_search_value_ = this->last_known_rolling_code_;
+            this->has_rolling_code_search_value_ = true;
+            --this->rolling_code_anchor_retries_remaining_;
+            return this->rolling_code_search_value_;
         }
 
         const auto base =
@@ -463,6 +487,9 @@ namespace secplus_gdo {
         const auto next = base + 100;
         this->rolling_code_search_value_ = next;
         this->has_rolling_code_search_value_ = true;
+        if (advanced != nullptr) {
+            *advanced = true;
+        }
         return next;
     }
 
@@ -482,9 +509,11 @@ namespace secplus_gdo {
             return;
         }
 
-        if (this->diagnostic_driver_restart_attempted_) {
+        if (this->diagnostic_driver_restart_attempt_count_ >= MAX_DIAGNOSTIC_DRIVER_RESTARTS) {
             ESP_LOGW(TAG,
-                     "Diagnostic sync still incomplete after gdolib driver restart; waiting for external sync request");
+                     "Diagnostic sync still incomplete after %" PRIu8
+                     " gdolib driver restart attempts; waiting for external sync request",
+                     this->diagnostic_driver_restart_attempt_count_);
             return;
         }
 
@@ -517,13 +546,12 @@ namespace secplus_gdo {
 
         const auto client_id = status.client_id;
         const auto rolling_code = status.rolling_code;
+        ++this->diagnostic_driver_restart_attempt_count_;
         ESP_LOGW(TAG,
-                 "Restarting gdolib driver for diagnostic sync with Client ID: %" PRIu32
-                 ", Rolling code: %" PRIu32,
-                 client_id, rolling_code);
-
-        this->diagnostic_driver_restart_attempted_ = true;
-        this->set_sync_state(false);
+                 "Restarting gdolib driver for diagnostic sync attempt %" PRIu8
+                 "/%" PRIu8 " with Client ID: %" PRIu32 ", Rolling code: %" PRIu32,
+                 this->diagnostic_driver_restart_attempt_count_, MAX_DIAGNOSTIC_DRIVER_RESTARTS, client_id,
+                 rolling_code);
 
         const auto deinit_err = gdo_deinit();
         if (deinit_err != ESP_OK) {
@@ -534,7 +562,6 @@ namespace secplus_gdo {
 
         this->initialized_ = false;
         this->started_ = false;
-        this->status_ = {};
 
         const auto init_err = this->init_driver_();
         if (init_err != ESP_OK) {
@@ -573,7 +600,7 @@ namespace secplus_gdo {
     void GDOComponent::reset_diagnostic_resync_state() {
         this->cancel_timeout("diagnostic_driver_restart");
         this->diagnostic_driver_restart_pending_ = false;
-        this->diagnostic_driver_restart_attempted_ = false;
+        this->diagnostic_driver_restart_attempt_count_ = 0;
     }
 
     void GDOComponent::set_rolling_code(uint32_t num) {
