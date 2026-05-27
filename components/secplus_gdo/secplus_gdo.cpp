@@ -41,7 +41,7 @@ namespace secplus_gdo {
         switch (event) {
         case GDO_CB_EVENT_SYNCED: {
             const bool has_opener_status = status->door != GDO_DOOR_STATE_UNKNOWN;
-            const bool rolling_code_accepted = has_opener_status || gdo->is_sync_state();
+            const bool rolling_code_accepted = has_opener_status;
             bool effective_synced = status->synced || rolling_code_accepted;
             ESP_LOGI(TAG, "Synced: %s, gdolib diagnostic sync: %s, protocol: %s",
                      effective_synced ? "true" : "false", status->synced ? "complete" : "incomplete",
