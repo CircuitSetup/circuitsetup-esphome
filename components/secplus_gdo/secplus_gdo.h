@@ -118,7 +118,7 @@ namespace secplus_gdo {
         void set_rolling_code(uint32_t num);
 
         bool is_sync_state() const { return this->status_.synced; }
-        uint32_t next_rolling_code_search_value(uint32_t fallback);
+        uint32_t next_rolling_code_search_value(uint32_t fallback, bool *advanced = nullptr);
         void schedule_diagnostic_data_resync();
         void reset_diagnostic_resync_state();
         void set_sync_state(bool synced);
@@ -162,7 +162,9 @@ namespace secplus_gdo {
         bool              button_triggered_{false};
         bool              has_last_known_rolling_code_{false};
         bool              has_rolling_code_search_value_{false};
-        bool              diagnostic_driver_restart_attempted_{false};
+        bool              diagnostic_driver_restart_pending_{false};
+        uint8_t           diagnostic_driver_restart_attempt_count_{0};
+        uint8_t           rolling_code_anchor_retries_remaining_{0};
         uint32_t          last_known_rolling_code_{0};
         uint32_t          rolling_code_search_value_{0};
 
