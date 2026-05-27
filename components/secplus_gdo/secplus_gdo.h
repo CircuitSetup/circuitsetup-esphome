@@ -162,6 +162,7 @@ namespace secplus_gdo {
         bool              button_triggered_{false};
         bool              has_last_known_rolling_code_{false};
         bool              has_rolling_code_search_value_{false};
+        bool              diagnostic_driver_restart_pending_{false};
         bool              diagnostic_driver_restart_attempted_{false};
         uint32_t          last_known_rolling_code_{0};
         uint32_t          rolling_code_search_value_{0};

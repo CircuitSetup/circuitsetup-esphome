@@ -477,18 +477,25 @@ namespace secplus_gdo {
     }
 
     void GDOComponent::schedule_diagnostic_driver_restart_() {
+        if (this->diagnostic_driver_restart_pending_) {
+            ESP_LOGD(TAG, "Diagnostic data resync already has a gdolib driver restart pending");
+            return;
+        }
+
         if (this->diagnostic_driver_restart_attempted_) {
             ESP_LOGW(TAG,
                      "Diagnostic sync still incomplete after gdolib driver restart; waiting for external sync request");
             return;
         }
 
-        this->diagnostic_driver_restart_attempted_ = true;
+        this->diagnostic_driver_restart_pending_ = true;
         this->set_timeout("diagnostic_driver_restart", 1000,
                           [this]() { this->restart_driver_for_diagnostic_sync_(); });
     }
 
     void GDOComponent::restart_driver_for_diagnostic_sync_() {
+        this->diagnostic_driver_restart_pending_ = false;
+
         if (!this->initialized_) {
             ESP_LOGD(TAG, "Skipping gdolib driver restart because secplus GDO is not initialized");
             return;
@@ -515,6 +522,7 @@ namespace secplus_gdo {
                  ", Rolling code: %" PRIu32,
                  client_id, rolling_code);
 
+        this->diagnostic_driver_restart_attempted_ = true;
         this->set_sync_state(false);
 
         const auto deinit_err = gdo_deinit();
@@ -563,6 +571,8 @@ namespace secplus_gdo {
     }
 
     void GDOComponent::reset_diagnostic_resync_state() {
+        this->cancel_timeout("diagnostic_driver_restart");
+        this->diagnostic_driver_restart_pending_ = false;
         this->diagnostic_driver_restart_attempted_ = false;
     }
 
