@@ -126,6 +126,7 @@ namespace secplus_gdo {
     protected:
         esp_err_t init_driver_();
         void remember_rolling_code_(uint32_t num);
+        void release_uart_tx_pin_to_safe_state_();
         void schedule_diagnostic_driver_restart_();
         void restart_driver_for_diagnostic_sync_();
         void sync_toggle_only_();

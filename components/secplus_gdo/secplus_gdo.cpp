@@ -365,6 +365,14 @@ namespace secplus_gdo {
         return err;
     }
 
+    void GDOComponent::release_uart_tx_pin_to_safe_state_() {
+        // Keep the inverted TX stage inactive while gdolib is stopped so the shared wall-control wire does not float.
+        gpio_reset_pin((gpio_num_t) GDO_UART_TX_PIN);
+        gpio_set_direction((gpio_num_t) GDO_UART_TX_PIN, GPIO_MODE_INPUT);
+        gpio_pullup_dis((gpio_num_t) GDO_UART_TX_PIN);
+        gpio_pulldown_en((gpio_num_t) GDO_UART_TX_PIN);
+    }
+
     void GDOComponent::sync_toggle_only_() {
         bool toggle_only = this->status_.toggle_only;
         if (this->toggle_only_switch_ != nullptr) {
@@ -411,6 +419,7 @@ namespace secplus_gdo {
         const auto init_err = this->init_driver_();
         if (init_err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize secplus GDO: %s", esp_err_to_name(init_err));
+            this->release_uart_tx_pin_to_safe_state_();
             this->mark_failed();
             return;
         }
@@ -468,6 +477,7 @@ namespace secplus_gdo {
             return;
         }
 
+        this->release_uart_tx_pin_to_safe_state_();
         this->initialized_ = false;
         this->started_ = false;
     }
@@ -576,6 +586,7 @@ namespace secplus_gdo {
             return;
         }
 
+        this->release_uart_tx_pin_to_safe_state_();
         this->initialized_ = false;
         this->started_ = false;
 
@@ -583,6 +594,7 @@ namespace secplus_gdo {
         if (init_err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to reinitialize secplus GDO for diagnostic sync restart: %s",
                      esp_err_to_name(init_err));
+            this->release_uart_tx_pin_to_safe_state_();
             this->mark_failed();
             return;
         }
