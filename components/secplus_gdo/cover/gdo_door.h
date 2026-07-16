@@ -79,7 +79,6 @@ using namespace esphome::cover;
         uint32_t                  pre_close_duration_{0};
         bool                      pre_close_active_{false};
         bool                      toggle_only_{false};
-        optional<float>           target_position_{};
         CoverOperation            prev_operation{COVER_OPERATION_IDLE};
         gdo_door_state_t          state_{GDO_DOOR_STATE_UNKNOWN};
         bool                      synced_{false};

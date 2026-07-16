@@ -37,10 +37,10 @@ namespace secplus_gdo {
     class GDOComponent : public Component {
     public:
         void setup() override;
-        void loop() override {}
         void dump_config() override;
         void on_shutdown() override;
         void start_gdo();
+        void defer_gdo_event(const gdo_status_t &status, gdo_cb_event_t event);
 
         // Initialize the driver early, then defer gdo_start() until child entities have restored preferences.
         [[nodiscard]] float get_setup_priority() const override { return setup_priority::HARDWARE; }
@@ -157,7 +157,6 @@ namespace secplus_gdo {
         GDOSwitch        *learn_switch_{nullptr};
         GDOSwitch        *toggle_only_switch_{nullptr};
         bool              initialized_{false};
-        bool              start_requested_{true};
         bool              started_{false};
         bool              cover_triggered_{false};
         bool              button_triggered_{false};

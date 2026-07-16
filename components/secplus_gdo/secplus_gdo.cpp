@@ -31,13 +31,7 @@ namespace secplus_gdo {
     constexpr uint8_t ROLLING_CODE_ANCHOR_RETRIES = 3;
     constexpr uint8_t MAX_DIAGNOSTIC_DRIVER_RESTARTS = 3;
 
-    static void gdo_event_handler(const gdo_status_t *status, gdo_cb_event_t event, void *arg) {
-        auto *gdo = static_cast<GDOComponent *>(arg);
-        if (gdo == nullptr || status == nullptr) {
-            ESP_LOGE(TAG, "Received invalid callback state from gdolib");
-            return;
-        }
-
+    static void process_gdo_event(const gdo_status_t *status, gdo_cb_event_t event, GDOComponent *gdo) {
         switch (event) {
         case GDO_CB_EVENT_SYNCED: {
             const bool has_opener_status = status->door != GDO_DOOR_STATE_UNKNOWN;
@@ -158,8 +152,21 @@ namespace secplus_gdo {
         }
     }
 
+    static void gdo_event_handler(const gdo_status_t *status, gdo_cb_event_t event, void *arg) {
+        auto *gdo = static_cast<GDOComponent *>(arg);
+        if (gdo == nullptr || status == nullptr) {
+            ESP_LOGE(TAG, "Received invalid callback state from gdolib");
+            return;
+        }
+
+        gdo->defer_gdo_event(*status, event);
+    }
+
+    void GDOComponent::defer_gdo_event(const gdo_status_t &status, gdo_cb_event_t event) {
+        this->defer([this, status, event]() { process_gdo_event(&status, event, this); });
+    }
+
     void GDOComponent::start_gdo() {
-        this->start_requested_ = true;
         this->start_if_ready_();
     }
 
@@ -400,7 +407,7 @@ namespace secplus_gdo {
     }
 
     void GDOComponent::start_if_ready_() {
-        if (!this->initialized_ || this->started_ || !this->start_requested_) {
+        if (!this->initialized_ || this->started_) {
             return;
         }
 
@@ -458,7 +465,6 @@ namespace secplus_gdo {
         ESP_LOGCONFIG(TAG, "  UART TX pin: %d", GDO_UART_TX_PIN);
         ESP_LOGCONFIG(TAG, "  UART RX pin: %d", GDO_UART_RX_PIN);
         ESP_LOGCONFIG(TAG, "  Initialized: %s", YESNO(this->initialized_));
-        ESP_LOGCONFIG(TAG, "  Start requested: %s", YESNO(this->start_requested_));
         ESP_LOGCONFIG(TAG, "  Started: %s", YESNO(this->started_));
         ESP_LOGCONFIG(TAG, "  Cover registered: %s", YESNO(this->door_ != nullptr));
         ESP_LOGCONFIG(TAG, "  Light registered: %s", YESNO(this->light_ != nullptr));
