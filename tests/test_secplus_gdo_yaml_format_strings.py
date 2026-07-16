@@ -8,14 +8,11 @@ SECPLUS_COMPONENT = Path("components/secplus_gdo/secplus_gdo.cpp")
 GDO_DOOR_COMPONENT = Path("components/secplus_gdo/cover/gdo_door.cpp")
 
 
-def test_secplus_config_owns_pinned_gdolib_dependency():
+def test_secplus_config_owns_pinned_gdolib_release():
     component_source = SECPLUS_INIT.read_text(encoding="utf-8")
     config_source = SECPLUS_CONFIG.read_text(encoding="utf-8")
 
-    assert (
-        '"gdolib=https://github.com/CircuitSetup/gdolib#'
-        '9141a2f1d1032e342aca0239b15d024226efbf31"'
-    ) in config_source
+    assert '"gdolib=https://github.com/CircuitSetup/gdolib#v1.2.0"' in config_source
     assert "cg.add_library" not in component_source
 
 

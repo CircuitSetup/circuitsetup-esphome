@@ -27,7 +27,7 @@ packages:
   circuitsetup.secplus-garage-door-opener: github://CircuitSetup/circuitsetup-esphome/circuitsetup-gdo-default.yaml@master
 ```
 
-That starter file pulls in the full Security+ package bundle from `master`, while the shipped configuration pins `gdolib` to a tested revision.
+That starter file pulls in the full Security+ package bundle from `master`, while the shipped configuration pins `gdolib` to the tested `v1.2.0` release.
 
 ## Common Customizations
 
