@@ -129,25 +129,27 @@ namespace secplus_gdo {
             gdo->set_motor_state(status->motor);
             break;
         case GDO_CB_EVENT_OPENINGS:
-            ESP_LOGI(TAG, "Openings: %d", status->openings);
+            ESP_LOGI(TAG, "Openings: %" PRIu16, status->openings);
             gdo->set_openings(status->openings);
             break;
         case GDO_CB_EVENT_TTC:
-            ESP_LOGI(TAG, "Time to close: %d", status->ttc_seconds);
+            ESP_LOGI(TAG, "Time to close: %" PRIu16, status->ttc_seconds);
             break;
         case GDO_CB_EVENT_PAIRED_DEVICES:
-            ESP_LOGI(TAG, "Paired devices: %d remotes, %d keypads, %d wall controls, %d accessories, %d total",
+            ESP_LOGI(TAG,
+                     "Paired devices: %" PRIu8 " remotes, %" PRIu8 " keypads, %" PRIu8 " wall controls, %" PRIu8
+                     " accessories, %" PRIu8 " total",
                      status->paired_devices.total_remotes, status->paired_devices.total_keypads,
                      status->paired_devices.total_wall_controls, status->paired_devices.total_accessories,
                      status->paired_devices.total_all);
             gdo->set_paired_devices(status->paired_devices);
             break;
         case GDO_CB_EVENT_OPEN_DURATION_MEASUREMENT:
-            ESP_LOGI(TAG, "Open duration: %d", status->open_ms);
+            ESP_LOGI(TAG, "Open duration: %" PRIu16, status->open_ms);
             gdo->set_open_duration(status->open_ms);
             break;
         case GDO_CB_EVENT_CLOSE_DURATION_MEASUREMENT:
-            ESP_LOGI(TAG, "Close duration: %d", status->close_ms);
+            ESP_LOGI(TAG, "Close duration: %" PRIu16, status->close_ms);
             gdo->set_close_duration(status->close_ms);
             break;
         default:

@@ -23,6 +23,7 @@
 
 #include "../secplus_gdo.h"
 #include "esphome/core/log.h"
+#include "inttypes.h"
 
 namespace esphome {
 namespace secplus_gdo {
@@ -123,7 +124,7 @@ bool GDODoor::do_action_after_warning(cover::CoverCall call) {
     this->remember_pre_close_state_();
     this->set_state(GDO_DOOR_STATE_CLOSING, this->position);
 
-    ESP_LOGD(TAG, "WARNING for %dms", this->pre_close_duration_);
+    ESP_LOGD(TAG, "WARNING for %" PRIu32 "ms", this->pre_close_duration_);
     if (this->pre_close_start_trigger) {
         this->pre_close_start_trigger->trigger();
     }
