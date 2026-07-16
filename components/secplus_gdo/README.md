@@ -1,6 +1,6 @@
 # secplus_gdo
 
-ESPHome `2026.2.0+` custom component for Security+ garage door openers.
+ESPHome `2026.2.0+` custom component for Security+ garage door openers on ESP32 with ESP-IDF.
 
 ## When To Use This Path
 
@@ -20,6 +20,11 @@ The component starts automatically during setup. You do not need a separate `wif
 external_components:
   - source: github://CircuitSetup/circuitsetup-esphome@master
     components: [secplus_gdo]
+
+esphome:
+  platformio_options:
+    lib_deps:
+      - "gdolib=https://github.com/CircuitSetup/gdolib#9141a2f1d1032e342aca0239b15d024226efbf31"
 
 secplus_gdo:
   id: cs_gdo
@@ -98,6 +103,8 @@ If you also need to edit package files such as `packages/secplus-gdo.yaml` or `p
 `switch` types:
 - `learn`
 - `toggle_only`
+
+The `select` platform configures the Security+ protocol (`auto`, Security+ 1.0, Security+ 2.0, or Security+ 1.0 with smart panel).
 
 ## Cover Options
 

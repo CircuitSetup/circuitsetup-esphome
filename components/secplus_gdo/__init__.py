@@ -20,11 +20,10 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import pins
-from esphome.const import CONF_ID, CONF_NUMBER
+from esphome.const import CONF_ID, CONF_NUMBER, __version__ as ESPHOME_VERSION
 from esphome.core import CORE
 
-DEPENDENCIES = ["preferences"]
-MULTI_CONF = True
+DEPENDENCIES = ["esp32", "preferences"]
 
 secplus_gdo_ns = cg.esphome_ns.namespace("secplus_gdo")
 SECPLUS_GDO = secplus_gdo_ns.class_("GDOComponent", cg.Component)
@@ -105,6 +104,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_INPUT_GDO): pins.gpio_input_pin_schema,
         }
     ).extend(cv.COMPONENT_SCHEMA),
+    cv.only_on_esp32,
+    cv.only_with_framework("esp-idf"),
     validate_gdo_pins,
     validate_cpp_symbol_id,
 )
@@ -120,7 +121,11 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
-    if CORE.is_esp32 and CORE.target_framework == "esp-idf":
+    if (
+        CORE.is_esp32
+        and CORE.target_framework == "esp-idf"
+        and cv.Version.parse(ESPHOME_VERSION) < cv.Version(2026, 3, 0)
+    ):
         # secplus_gdo needs to own the panic wrapper on ESP-IDF so the GDO TX pin can
         # be forced into a safe state before panic output proceeds.
         cg.add_build_unflag("-Wl,--wrap=esp_panic_handler")
