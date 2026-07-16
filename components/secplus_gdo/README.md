@@ -24,7 +24,7 @@ external_components:
 esphome:
   platformio_options:
     lib_deps:
-      - "gdolib=https://github.com/CircuitSetup/gdolib#v1.2.0"
+      - "gdolib=https://github.com/CircuitSetup/gdolib#v1.3.0"
 
 secplus_gdo:
   id: cs_gdo
