@@ -1,8 +1,3 @@
-script:
-  - id: pc_warn
-    then:
-      - button.press: pre_close_warning
-
 secplus_gdo:
   id: cs_gdo
   input_gdo_pin: ${uart_rx_pin}
@@ -21,10 +16,9 @@ cover:
     id: gdo_door
     pre_close_warning_duration: $garage_door_close_warning_duration
     pre_close_warning_start:
-      - script.execute:
-          id: pc_warn
+      - button.press: pre_close_warning
     pre_close_warning_end:
-      - script.stop: pc_warn
+      - rtttl.stop
       - light.turn_off: warning_led
 
 sensor:

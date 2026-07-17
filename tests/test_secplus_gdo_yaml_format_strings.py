@@ -3,6 +3,7 @@ from pathlib import Path
 
 SECPLUS_PACKAGE = Path("packages/secplus-gdo.yaml")
 SECPLUS_CONFIG = Path("circuitsetup-secplus-garage-door-opener.yaml")
+CORE_PACKAGE = Path("packages/core-esp32-s3.yaml")
 SECPLUS_INIT = Path("components/secplus_gdo/__init__.py")
 SECPLUS_COMPONENT = Path("components/secplus_gdo/secplus_gdo.cpp")
 GDO_DOOR_COMPONENT = Path("components/secplus_gdo/cover/gdo_door.cpp")
@@ -12,8 +13,23 @@ def test_secplus_config_owns_pinned_gdolib_release():
     component_source = SECPLUS_INIT.read_text(encoding="utf-8")
     config_source = SECPLUS_CONFIG.read_text(encoding="utf-8")
 
-    assert '"gdolib=https://github.com/CircuitSetup/gdolib#v1.2.0"' in config_source
+    assert '"gdolib=https://github.com/CircuitSetup/gdolib#v1.3.0"' in config_source
     assert "cg.add_library" not in component_source
+
+
+def test_core_package_uses_native_esp32_flash_mode():
+    source = CORE_PACKAGE.read_text(encoding="utf-8")
+
+    assert "  flash_mode: dio" in source
+    assert "board_build.flash_mode" not in source
+
+
+def test_pre_close_warning_can_be_stopped_directly():
+    source = SECPLUS_PACKAGE.read_text(encoding="utf-8")
+
+    assert "pc_warn" not in source
+    assert "      - button.press: pre_close_warning" in source
+    assert "      - rtttl.stop" in source
 
 
 def test_component_rejects_multiple_driver_instances():
