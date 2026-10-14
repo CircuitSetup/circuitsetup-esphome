@@ -266,7 +266,14 @@ void GDODoor::control(const cover::CoverCall &call) {
 
     if (call.get_toggle()) {
         ESP_LOGD(TAG, "Toggle command received");
-        if (this->position != COVER_CLOSED) {
+        if (this->pre_close_active_) {
+            this->cancel_pre_close_warning();
+        } else if (this->current_operation == COVER_OPERATION_OPENING ||
+                   this->current_operation == COVER_OPERATION_CLOSING) {
+            if (!this->do_action(call)) {
+                this->publish_state(false);
+            }
+        } else if (this->position != COVER_CLOSED) {
             if (!this->do_action_after_warning(call)) {
                 this->publish_state(false);
             }
