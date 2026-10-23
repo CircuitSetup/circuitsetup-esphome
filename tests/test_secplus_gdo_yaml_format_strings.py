@@ -13,7 +13,7 @@ def test_secplus_config_owns_pinned_gdolib_release():
     component_source = SECPLUS_INIT.read_text(encoding="utf-8")
     config_source = SECPLUS_CONFIG.read_text(encoding="utf-8")
 
-    assert '"gdolib=https://github.com/CircuitSetup/gdolib#v1.3.0"' in config_source
+    assert '"gdolib=https://github.com/CircuitSetup/gdolib#v1.3.2"' in config_source
     assert "cg.add_library" not in component_source
 
 

@@ -69,6 +69,7 @@ using namespace esphome::cover;
 
     protected:
         void control(const cover::CoverCall &call) override;
+        void check_close_started();
         bool send_command_(const char *action, std::function<esp_err_t()> &&command);
         void remember_pre_close_state_();
         void restore_pre_close_state_();

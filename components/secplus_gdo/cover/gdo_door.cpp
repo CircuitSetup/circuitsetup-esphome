@@ -28,6 +28,10 @@
 namespace esphome {
 namespace secplus_gdo {
 
+// How long after sending a close to wait for the opener to report motion before
+// assuming it refused the command (e.g. safety beam blocked).
+static const uint32_t CLOSE_WATCHDOG_MS = 10000;
+
 void GDODoor::set_state(gdo_door_state_t state, float position) {
     if (this->pre_close_active_) {
         // If we are in the pre-close state and the door is closing,
@@ -122,6 +126,7 @@ bool GDODoor::do_action_after_warning(cover::CoverCall call) {
     }
 
     this->remember_pre_close_state_();
+    this->cancel_timeout("close_watchdog");
     this->set_state(GDO_DOOR_STATE_CLOSING, this->position);
 
     ESP_LOGD(TAG, "WARNING for %" PRIu32 "ms", this->pre_close_duration_);
@@ -138,11 +143,32 @@ bool GDODoor::do_action_after_warning(cover::CoverCall call) {
             this->restore_pre_close_state_();
         } else {
             this->clear_pre_close_state_();
+            this->set_timeout("close_watchdog", CLOSE_WATCHDOG_MS, [this]() { this->check_close_started(); });
         }
     });
 
     this->pre_close_active_ = true;
     return true;
+}
+
+// The CLOSING state set before the pre-close warning is optimistic. If the opener refuses
+// the close, its door state never changes, so gdolib sends no door event and nothing would
+// ever revert it -- the cover sits at "Closing" and control() then ignores both Open
+// ("already open") and Close ("already moving"). Re-sync to gdolib's actual state instead.
+void GDODoor::check_close_started() {
+    if (this->current_operation != COVER_OPERATION_CLOSING) {
+        return; // a real door event already moved us off the optimistic state
+    }
+
+    gdo_status_t status;
+    if (gdo_get_status(&status) != ESP_OK || status.door == GDO_DOOR_STATE_CLOSING ||
+        status.door == GDO_DOOR_STATE_UNKNOWN || status.door >= GDO_DOOR_STATE_MAX) {
+        return;
+    }
+
+    float position = status.door_position < 0 ? this->position : (float)(10000 - status.door_position) / 10000.0f;
+    ESP_LOGW(TAG, "Opener did not start closing; restoring door state %s", gdo_door_state_to_string(status.door));
+    this->set_state(status.door, position);
 }
 
 bool GDODoor::do_action(const cover::CoverCall &call) {
@@ -240,7 +266,14 @@ void GDODoor::control(const cover::CoverCall &call) {
 
     if (call.get_toggle()) {
         ESP_LOGD(TAG, "Toggle command received");
-        if (this->position != COVER_CLOSED) {
+        if (this->pre_close_active_) {
+            this->cancel_pre_close_warning();
+        } else if (this->current_operation == COVER_OPERATION_OPENING ||
+                   this->current_operation == COVER_OPERATION_CLOSING) {
+            if (!this->do_action(call)) {
+                this->publish_state(false);
+            }
+        } else if (this->position != COVER_CLOSED) {
             if (!this->do_action_after_warning(call)) {
                 this->publish_state(false);
             }
