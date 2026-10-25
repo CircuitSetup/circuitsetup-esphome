@@ -24,7 +24,7 @@ external_components:
 esphome:
   platformio_options:
     lib_deps:
-      - "gdolib=https://github.com/CircuitSetup/gdolib#v1.3.2"
+      - "gdolib=https://github.com/CircuitSetup/gdolib#v1.3.3"
 
 secplus_gdo:
   id: cs_gdo
@@ -58,6 +58,8 @@ binary_sensor:
     type: motion
     secplus_gdo_id: cs_gdo
 ```
+
+The UART pins must be distinct internal ESP32 GPIO numbers. Pin inversion, custom pin modes, and GPIO expanders are not supported by the driver.
 
 ## Local Development Workflow
 
