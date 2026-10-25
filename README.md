@@ -161,10 +161,3 @@ After installing, verify both auxiliary-input choices as applicable, Stop during
 opening, a repeated Close while closing, warning cancellation followed by another
 Close, and a closed contact during the warning. These require physical acceptance
 testing in addition to the automated tests.
-
-Dry-contact host checks (ESPHome `2026.8.1`, Python, and `g++` required):
-
-```sh
-python tests/test_dry_contact_commands.py
-python tests/test_dry_contact_auxiliary.py
-```
