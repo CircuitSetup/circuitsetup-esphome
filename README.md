@@ -4,7 +4,6 @@ ESPHome configurations and a custom `secplus_gdo` external component for Circuit
 This repository builds on the original garage door opener work from [Konnected Inc.](https://github.com/konnected-io/konnected-esphome), whose earlier ESPHome support helped establish the foundation for this project.
 
 The supplied firmware packages require ESPHome `2026.6.0+` for the ESP32 flash mode setting.
-The dry-contact package rechecks its wired sensor after the close warning and skips the relay pulse if the door has already closed.
 Humidity calibration keeps valid readings within 0-100% and preserves unavailable sensor readings.
 
 ## Choose a Starting Point

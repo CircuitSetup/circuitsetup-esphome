@@ -28,14 +28,10 @@ cover:
           then:
             - button.press: pre_close_warning
             - delay: $garage_door_close_warning_duration
-            - if:
-                condition:
-                  binary_sensor.is_on: garage_door_input
-                then:
-                  - button.press: garage_door_opener_button
-                  - cover.template.publish:
-                      id: garage_door
-                      current_operation: CLOSING
+            - button.press: garage_door_opener_button
+            - cover.template.publish:
+                id: garage_door
+                current_operation: CLOSING
           else:
             - script.execute: error_tone_1
             - lambda: ESP_LOGW("circuitsetup.gdo","Garage door is already closed. Ignoring close action.");
@@ -50,19 +46,14 @@ cover:
           then:
             - button.press: pre_close_warning
             - delay: $garage_door_close_warning_duration
-            - if:
-                condition:
-                  binary_sensor.is_on: garage_door_input
-                then:
-                  - button.press: garage_door_opener_button
-                  - cover.template.publish:
-                      id: garage_door
-                      current_operation: CLOSING
+            - cover.template.publish:
+                id: garage_door
+                current_operation: CLOSING
           else:
-            - button.press: garage_door_opener_button
             - cover.template.publish:
                 id: garage_door
                 current_operation: OPENING
+      - button.press: garage_door_opener_button
     
     # Triggers the garage door button to stop only if the garage door is known to be moving
     stop_action:
