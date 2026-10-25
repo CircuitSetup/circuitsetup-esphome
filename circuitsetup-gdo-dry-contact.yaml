@@ -50,7 +50,7 @@ substitutions:
   name: circuitsetup-gdo
   friendly_name: Garage Door Opener
   project_name: circuitsetup.gdo-dry-contact
-  project_version: "1.1"
+  project_version: "1.2"
   garage_door_cover_name: Garage Door
   garage_temp_name: Garage Temp
   garage_humidity_name: Garage Humidity
@@ -67,6 +67,10 @@ substitutions:
   # GARAGE DOOR CLOSE WARNING DURATION
   # Duration to blink the warning LED and beep the buzzer before the garage door closes.
   garage_door_close_warning_duration: 5s
+
+  # REQUIRED: use the device's Calibrate Travel Times button before normal controls.
+  # Calibration measures both directions and saves the times across restarts.
+  # Normal Open/Close/Toggle remain disabled until Travel Time Calibrated is ON.
 
   ####
   # ADDITIONAL SETTTINGS

@@ -5,14 +5,52 @@ binary_sensor:
     on_state:
       - if:
           condition:
-            lambda: return x;
+            lambda: return !x;
           then:
-            - cover.template.publish:
-                id: garage_door
-                state: OPEN
-                current_operation: IDLE
+            - lambda: |-
+                const int phase = id(dry_contact_calibration_phase);
+                if (phase == 3) {
+                  const uint32_t close_ms = millis() - id(dry_contact_motion_start);
+                  const uint32_t open_ms = id(dry_contact_calibration_open_ms);
+                  if (open_ms >= 2000 && open_ms < 120000 && close_ms >= 2000 && close_ms < 120000) {
+                    id(dry_contact_travel_times) = {open_ms, close_ms};
+                    if (id(dry_contact_calibration_storage).save(&id(dry_contact_travel_times)) &&
+                        global_preferences->sync()) {
+                      id(dry_contact_calibration_phase) = 0;
+                    } else {
+                      id(dry_contact_travel_times) = {0, 0};
+                      id(dry_contact_calibration_storage).save(&id(dry_contact_travel_times));
+                      global_preferences->sync();
+                      id(dry_contact_calibration_phase) = -1;
+                      ESP_LOGW("dry_contact", "Calibration could not be saved; movement remains disabled.");
+                    }
+                  } else {
+                    id(dry_contact_calibration_phase) = -1;
+                    ESP_LOGW("dry_contact", "Calibration travel must take between 2 and 120 seconds. Retry from closed.");
+                  }
+                } else if (phase > 0) {
+                  id(dry_contact_calibration_phase) = -1;
+                }
+            - script.stop: dry_contact_calibration_close
+            - script.stop: dry_contact_calibration_watchdog
+            - script.stop: dry_contact_close
+            - script.execute: pre_close_warning_stop
+            - script.stop: dry_contact_motion
+            - script.stop: dry_contact_stop
+            - lambda: |-
+                id(dry_contact_position) = 0.0f;
+                id(dry_contact_next_open) = true;
+                id(garage_door).position = 0.0f;
+                id(garage_door).current_operation = COVER_OPERATION_IDLE;
+                id(garage_door).publish_state();
           else:
-            - cover.template.publish:
-                id: garage_door
-                state: CLOSED
-                current_operation: IDLE
+            - lambda: |-
+                // An opening door has only left the closed reed, not finished moving.
+                if (id(garage_door).current_operation == COVER_OPERATION_IDLE &&
+                    (!id(dry_contact_sensor_ready) || id(dry_contact_position) == 0.0f)) {
+                  id(dry_contact_position) = 1.0f;
+                  id(garage_door).position = 1.0f;
+                  id(dry_contact_next_open) = false;
+                  id(garage_door).publish_state();
+                }
+      - lambda: id(dry_contact_sensor_ready) = true;

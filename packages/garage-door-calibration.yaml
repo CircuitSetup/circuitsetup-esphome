@@ -1,0 +1,144 @@
+globals:
+  - id: dry_contact_travel_times
+    type: std::array<uint32_t, 2>
+    initial_value: '{0, 0}'
+  - id: dry_contact_calibration_storage
+    type: esphome::ESPPreferenceObject
+  - id: dry_contact_calibration_phase
+    type: int
+    initial_value: '0'
+  - id: dry_contact_calibration_open_ms
+    type: uint32_t
+    initial_value: '0'
+
+esphome:
+  on_boot:
+    - priority: 600
+      then:
+        - lambda: |-
+            // Stable key for the pair; explicit saves also retry writes after an earlier sync failure.
+            id(dry_contact_calibration_storage) = global_preferences->make_preference<std::array<uint32_t, 2>>(0x44435454);
+            id(dry_contact_calibration_storage).load(&id(dry_contact_travel_times));
+
+binary_sensor:
+  - platform: template
+    id: dry_contact_calibrated
+    name: Travel Time Calibrated
+    entity_category: diagnostic
+    lambda: |-
+      const auto &times = id(dry_contact_travel_times);
+      return id(dry_contact_calibration_phase) == 0 &&
+             times[0] >= 2000 && times[0] < 120000 && times[1] >= 2000 && times[1] < 120000;
+
+text_sensor:
+  - platform: template
+    name: Travel Time Calibration
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      switch (id(dry_contact_calibration_phase)) {
+        case 1: return std::string("Opening: press Calibrate Travel Times when fully open");
+        case 2: return std::string("Closing warning: keep the doorway clear");
+        case 3: return std::string("Closing: waiting for the closed sensor");
+        case -1: return std::string("Calibration canceled or failed: close the door and retry");
+        default: return std::string(id(dry_contact_calibrated).state ? "Calibrated" : "Not calibrated");
+      }
+
+sensor:
+  - platform: template
+    name: Calibrated Opening Time
+    entity_category: diagnostic
+    unit_of_measurement: s
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: return id(dry_contact_travel_times)[0] / 1000.0f;
+  - platform: template
+    name: Calibrated Closing Time
+    entity_category: diagnostic
+    unit_of_measurement: s
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: return id(dry_contact_travel_times)[1] / 1000.0f;
+
+button:
+  - platform: template
+    id: dry_contact_calibrate
+    name: Calibrate Travel Times
+    entity_category: config
+    on_press:
+      - lambda: |-
+          const int phase = id(dry_contact_calibration_phase);
+          if (phase == 1) {
+            const uint32_t elapsed = millis() - id(dry_contact_motion_start);
+            if (!id(garage_door_input).state || elapsed < 2000 || elapsed >= 120000) {
+              ESP_LOGW("dry_contact", "Press calibration again only when the door is fully open (2-120 seconds).");
+              return;
+            }
+            id(dry_contact_calibration_open_ms) = elapsed;
+            id(dry_contact_calibration_watchdog).stop();
+            id(dry_contact_position) = 1.0f;
+            id(garage_door).position = 1.0f;
+            id(garage_door).current_operation = COVER_OPERATION_IDLE;
+            id(dry_contact_calibration_phase) = 2;
+            id(dry_contact_calibration_close).execute();
+            id(garage_door).publish_state();
+            return;
+          }
+          if (phase > 0 || !id(dry_contact_sensor_ready) || id(garage_door_input).state ||
+              id(garage_door).current_operation != COVER_OPERATION_IDLE ||
+              id(dry_contact_close).is_running() || id(dry_contact_stop).is_running() ||
+              id(dry_contact_pulse).is_running()) {
+            ESP_LOGW("dry_contact", "Start calibration with the door fully closed and idle.");
+            return;
+          }
+          id(dry_contact_calibration_phase) = 1;
+          id(dry_contact_travel_times) = {0, 0};
+          id(dry_contact_calibrated).publish_state(false);
+          // Flush the invalidated pair before moving so a restart cannot restore a half-finished calibration.
+          if (!id(dry_contact_calibration_storage).save(&id(dry_contact_travel_times)) ||
+              !global_preferences->sync()) {
+            id(dry_contact_calibration_phase) = -1;
+            ESP_LOGW("dry_contact", "Calibration could not be saved; movement remains disabled.");
+            return;
+          }
+          if (id(dry_contact_calibration_phase) != 1) return;
+          id(dry_contact_calibration_open_ms) = 0;
+          id(dry_contact_position) = 0.0f;
+          id(garage_door).position = 0.0f;
+          id(dry_contact_motion_start) = millis();
+          id(dry_contact_next_open) = false;
+          id(garage_door).current_operation = COVER_OPERATION_OPENING;
+          id(dry_contact_pulse).execute();
+          if (id(dry_contact_calibration_phase) == 1) id(dry_contact_calibration_watchdog).execute();
+          id(garage_door).publish_state();
+
+script:
+  - id: dry_contact_calibration_close
+    mode: single
+    then:
+      - button.press: pre_close_warning
+      - delay: $garage_door_close_warning_duration
+      - script.execute: pre_close_warning_stop
+      - lambda: |-
+          if (id(dry_contact_calibration_phase) != 2 || !id(dry_contact_sensor_ready) ||
+              !id(garage_door_input).state) return;
+          id(dry_contact_calibration_phase) = 3;
+          id(dry_contact_motion_start) = millis();
+          id(dry_contact_next_open) = true;
+          id(garage_door).current_operation = COVER_OPERATION_CLOSING;
+          id(dry_contact_pulse).execute();
+          if (id(dry_contact_calibration_phase) == 3) id(dry_contact_calibration_watchdog).execute();
+          id(garage_door).publish_state();
+
+  - id: dry_contact_calibration_watchdog
+    mode: restart
+    then:
+      - delay: 120000ms
+      - script.stop: dry_contact_calibration_close
+      - script.execute: pre_close_warning_stop
+      - lambda: |-
+          id(dry_contact_calibration_phase) = -1;
+          id(dry_contact_position) = id(garage_door).position;
+          id(garage_door).current_operation = COVER_OPERATION_IDLE;
+          id(garage_door).publish_state();
+          ESP_LOGW("dry_contact", "Calibration timed out. Use the wall control to close the door, then retry.");
