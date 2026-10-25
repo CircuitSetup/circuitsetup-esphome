@@ -93,22 +93,42 @@ Aux In 2/GPIO6 by overriding `wired_sensor_pin`) and a momentary opener output o
 Aux Out/GPIO7. The unused auxiliary input remains available for another sensor.
 The contact must read OFF when fully closed and ON when away from closed.
 
-Before using remote door controls, measure complete opening and closing travel
-with the physical wall control, starting at the opposite end of travel. Set both
-values in your device's YAML substitutions, in milliseconds. For example, **only
-if you measured 14 seconds opening and 12 seconds closing**:
+The device exposes **Calibrate Travel Times**, **Travel Time Calibrated**, and
+**Travel Time Calibration** in Home Assistant and its ESPHome web page. The last
+two show whether setup is complete and the current step. **Calibrated Opening
+Time** and **Calibrated Closing Time** show the saved measurements in seconds.
+Normal Open, Close, and Toggle controls cannot move an uncalibrated door.
 
-```yaml
-substitutions:
-  garage_door_open_duration_ms: "14000"
-  garage_door_close_duration_ms: "12000"
-```
+Calibrate while watching the door and keeping the doorway clear:
 
-Both defaults are zero, which disables remote movement until configured. The
-firmware estimates movement and partial position from these times; it reports
-fully closed only when the contact confirms it. The opener must stop itself at
-its normal travel limits. No automatic relay pulse is sent when a travel timer
-expires.
+1. Use the wall control to put the door fully closed and let it stop. Press
+   **Calibrate Travel Times**. This deliberate calibration action starts opening
+   even though ordinary movement controls are locked.
+2. Press the same button again **immediately when the door reaches fully open**.
+   The single closed contact cannot detect this endpoint, so this confirmation
+   records the opening time. The device then gives its normal closing warning.
+3. The device starts closing and measures until the closed contact confirms
+   arrival. **Travel Time Calibrated** turns ON and the status reads **Calibrated**.
+   Both times are saved together and survive a restart; no YAML time edits are
+   required.
+
+**Stop** cancels calibration and remains available during calibration movement.
+Ordinary Open, Close, and Toggle requests are ignored throughout the calibration
+cycle. Recalibrating clears the old saved times before its first movement. An
+interrupted cycle, failed save, or missing endpoint confirmation keeps normal
+controls locked, including after a restart. To retry, use the wall control to
+return fully closed, then press the calibration button again.
+
+Each measured direction must take at least 2 seconds and less than 120 seconds.
+After a two-minute timeout the device cancels pending work and reports failure;
+it does not send a blind pulse that might restart a door already at its limit.
+Use the wall control if physical movement needs to be stopped after a timeout.
+
+The firmware estimates movement and partial position from the learned times; it
+reports fully closed only when the contact confirms it. The opener must stop
+itself at its normal travel limits. No automatic relay pulse is sent when a
+normal travel timer expires. Pressing the full-open confirmation late inflates
+the opening estimate, so watch the door closely during calibration.
 
 This configuration assumes a wall-button sequence of **open → stop → close →
 stop → open**. A directional request that would send the door the wrong way is

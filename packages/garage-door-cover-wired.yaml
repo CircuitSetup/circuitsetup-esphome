@@ -7,6 +7,32 @@ binary_sensor:
           condition:
             lambda: return !x;
           then:
+            - lambda: |-
+                const int phase = id(dry_contact_calibration_phase);
+                if (phase == 3) {
+                  const uint32_t close_ms = millis() - id(dry_contact_motion_start);
+                  const uint32_t open_ms = id(dry_contact_calibration_open_ms);
+                  if (open_ms >= 2000 && open_ms < 120000 && close_ms >= 2000 && close_ms < 120000) {
+                    id(dry_contact_travel_times) = {open_ms, close_ms};
+                    if (id(dry_contact_calibration_storage).save(&id(dry_contact_travel_times)) &&
+                        global_preferences->sync()) {
+                      id(dry_contact_calibration_phase) = 0;
+                    } else {
+                      id(dry_contact_travel_times) = {0, 0};
+                      id(dry_contact_calibration_storage).save(&id(dry_contact_travel_times));
+                      global_preferences->sync();
+                      id(dry_contact_calibration_phase) = -1;
+                      ESP_LOGW("dry_contact", "Calibration could not be saved; movement remains disabled.");
+                    }
+                  } else {
+                    id(dry_contact_calibration_phase) = -1;
+                    ESP_LOGW("dry_contact", "Calibration travel must take between 2 and 120 seconds. Retry from closed.");
+                  }
+                } else if (phase > 0) {
+                  id(dry_contact_calibration_phase) = -1;
+                }
+            - script.stop: dry_contact_calibration_close
+            - script.stop: dry_contact_calibration_watchdog
             - script.stop: dry_contact_close
             - script.execute: pre_close_warning_stop
             - script.stop: dry_contact_motion

@@ -86,6 +86,21 @@ class DryContactConfigTests(unittest.TestCase):
         self.assertEqual(entity(config, "binary_sensor", "garage_door_input")["pin"]["number"], 6)
         self.assertEqual(entity(config, "output", "garage_door_opener_output")["pin"]["number"], 7)
 
+    def test_calibration_controls_and_status_are_exposed_with_persistent_times(self):
+        config = local_config(self.directory.name)
+        button = entity(config, "button", "dry_contact_calibrate")
+        self.assertEqual(button["name"], "Calibrate Travel Times")
+        self.assertEqual(button["entity_category"], "config")
+        status = entity(config, "binary_sensor", "dry_contact_calibrated")
+        self.assertEqual(status["name"], "Travel Time Calibrated")
+        self.assertFalse(status["disabled_by_default"])
+        self.assertTrue(any(item["name"] == "Travel Time Calibration" for item in config["text_sensor"]))
+        times = entity(config, "globals", "dry_contact_travel_times")
+        self.assertEqual(times["initial_value"], "{0, 0}")
+        storage = entity(config, "globals", "dry_contact_calibration_storage")
+        self.assertEqual(storage["type"], "esphome::ESPPreferenceObject")
+        self.assertEqual(len([item for item in config["sensor"] if item.get("name", "").startswith("Calibrated ")]), 2)
+
     def test_duplicate_auxiliary_pin_is_rejected(self):
         for overrides in ({"wired_sensor_pin": "GPIO7"}, {"door_control_pin": "GPIO5"}):
             with self.subTest(overrides=overrides):

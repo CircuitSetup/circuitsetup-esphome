@@ -68,11 +68,9 @@ substitutions:
   # Duration to blink the warning LED and beep the buzzer before the garage door closes.
   garage_door_close_warning_duration: 5s
 
-  # REQUIRED: measure full travel in each direction, in milliseconds.
-  # Zero disables remote movement until calibrated; do not guess these values.
-  # Example only: a measured 14-second opening is "14000".
-  garage_door_open_duration_ms: "0"
-  garage_door_close_duration_ms: "0"
+  # REQUIRED: use the device's Calibrate Travel Times button before normal controls.
+  # Calibration measures both directions and saves the times across restarts.
+  # Normal Open/Close/Toggle remain disabled until Travel Time Calibrated is ON.
 
   ####
   # ADDITIONAL SETTTINGS

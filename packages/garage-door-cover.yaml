@@ -1,3 +1,6 @@
+packages:
+  travel_time_calibration: !include garage-door-calibration.yaml
+
 globals:
   - id: dry_contact_position
     type: float
@@ -22,23 +25,26 @@ cover:
     lambda: |-
       if (!id(dry_contact_sensor_ready)) return {};
       float position = id(dry_contact_position);
+      const auto &times = id(dry_contact_travel_times);
+      if (id(dry_contact_calibration_phase) != 0 || times[0] == 0 || times[1] == 0)
+        return id(garage_door_input).state ? std::max(position, 0.01f) : 0.0f;
       const float elapsed = millis() - id(dry_contact_motion_start);
       if (id(garage_door).current_operation == COVER_OPERATION_OPENING)
-        position += elapsed / ${garage_door_open_duration_ms};
+        position += elapsed / times[0];
       else if (id(garage_door).current_operation == COVER_OPERATION_CLOSING)
-        position -= elapsed / ${garage_door_close_duration_ms};
+        position -= elapsed / times[1];
       // Only the reed can confirm fully closed.
       return clamp(position, id(garage_door_input).state ? 0.01f : 0.0f, 1.0f);
 
     open_action:
-      - script.stop: dry_contact_close
-      - script.execute: pre_close_warning_stop
       - lambda: |-
-          if (!id(dry_contact_sensor_ready) || ${garage_door_open_duration_ms} <= 0 ||
-              ${garage_door_close_duration_ms} <= 0) {
-            ESP_LOGW("dry_contact", "Configure both measured travel times before using door controls.");
+          if (!id(dry_contact_sensor_ready) || id(dry_contact_calibration_phase) != 0 ||
+              !id(dry_contact_calibrated).state) {
+            ESP_LOGW("dry_contact", "Complete Travel Time Calibration before using door controls.");
             return;
           }
+          id(dry_contact_close).stop();
+          id(pre_close_warning_stop).execute();
           if (id(garage_door).current_operation == COVER_OPERATION_OPENING) return;
           if (id(garage_door).current_operation != COVER_OPERATION_IDLE ||
               id(dry_contact_stop).is_running() || id(dry_contact_pulse).is_running() ||
@@ -51,9 +57,9 @@ cover:
 
     close_action:
       - lambda: |-
-          if (!id(dry_contact_sensor_ready) || ${garage_door_open_duration_ms} <= 0 ||
-              ${garage_door_close_duration_ms} <= 0) {
-            ESP_LOGW("dry_contact", "Configure both measured travel times before using door controls.");
+          if (!id(dry_contact_sensor_ready) || id(dry_contact_calibration_phase) != 0 ||
+              !id(dry_contact_calibrated).state) {
+            ESP_LOGW("dry_contact", "Complete Travel Time Calibration before using door controls.");
             return;
           }
           if (!id(garage_door_input).state || id(dry_contact_close).is_running() ||
@@ -67,24 +73,25 @@ cover:
           id(dry_contact_close).execute();
 
     stop_action:
+      - lambda: |-
+          if (id(dry_contact_calibration_phase) > 0) {
+            id(dry_contact_calibration_close).stop();
+            id(dry_contact_calibration_watchdog).stop();
+            id(dry_contact_calibration_phase) = -1;
+          }
       - script.stop: dry_contact_close
       - script.execute: pre_close_warning_stop
       - script.execute: dry_contact_stop
 
     toggle_action:
-      - if:
-          condition:
-            lambda: return id(dry_contact_close).is_running() || id(garage_door).current_operation != COVER_OPERATION_IDLE;
-          then:
-            - script.stop: dry_contact_close
-            - script.execute: pre_close_warning_stop
-            - script.execute: dry_contact_stop
-          else:
-            - lambda: |-
-                auto call = id(garage_door).make_call();
-                if (id(dry_contact_next_open)) call.set_command_open();
-                else call.set_command_close();
-                call.perform();
+      - lambda: |-
+          if (id(dry_contact_calibration_phase) != 0 || !id(dry_contact_calibrated).state) return;
+          auto call = id(garage_door).make_call();
+          if (id(dry_contact_close).is_running() || id(garage_door).current_operation != COVER_OPERATION_IDLE)
+            call.set_command_stop();
+          else if (id(dry_contact_next_open)) call.set_command_open();
+          else call.set_command_close();
+          call.perform();
 
 script:
   - id: dry_contact_pulse
@@ -127,7 +134,7 @@ script:
           id(garage_door).publish_state();
       - delay: !lambda |-
           const float fraction = opening ? 1.0f - id(dry_contact_position) : id(dry_contact_position);
-          return static_cast<uint32_t>(fraction * (opening ? ${garage_door_open_duration_ms} : ${garage_door_close_duration_ms}));
+          return static_cast<uint32_t>(fraction * id(dry_contact_travel_times)[opening ? 0 : 1]);
       - lambda: |-
           id(dry_contact_position) = !id(garage_door_input).state ? 0.0f : (opening ? 1.0f : 0.01f);
           id(dry_contact_next_open) = !id(garage_door_input).state || !opening;
@@ -143,7 +150,7 @@ script:
       - script.execute: pre_close_warning_stop
       - if:
           condition:
-            lambda: return id(dry_contact_sensor_ready) && id(garage_door_input).state && id(garage_door).current_operation == COVER_OPERATION_IDLE && !id(dry_contact_next_open);
+            lambda: return id(dry_contact_calibration_phase) == 0 && id(dry_contact_calibrated).state && id(dry_contact_sensor_ready) && id(garage_door_input).state && id(garage_door).current_operation == COVER_OPERATION_IDLE && !id(dry_contact_next_open);
           then:
             - script.execute: dry_contact_pulse
             - script.execute:
