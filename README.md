@@ -20,7 +20,7 @@ Already installed? See [everyday controls](#everyday-controls), [firmware update
 
 This guide covers the CircuitSetup module with **Security+ or Security+ 2.0** openers from Chamberlain, LiftMaster, Craftsman, and Merlin. CircuitSetup lists yellow, red, and purple learn-button models as compatible. Check your opener's model and manual if you are unsure which protocol it uses.
 
-For an opener controlled by a simple dry-contact wall button, use the separate [dry-contact setup and calibration guide](docs/dry-contact.md).
+For an opener controlled by a simple dry-contact wall button, use the separate [dry-contact wiring, sensor, and calibration guide](docs/dry-contact.md). It includes a labeled front photo showing the Aux Out opener connection and the required closed-position contact sensor.
 
 You will need:
 
