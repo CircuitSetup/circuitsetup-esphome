@@ -57,7 +57,13 @@ using namespace esphome::cover;
             this->pre_close_end_trigger = trigger;
         }
 
-        void set_sync_state(bool synced) { this->synced_ = synced; }
+        void set_sync_state(bool synced) {
+            this->synced_ = synced;
+            if (!synced) {
+                this->cancel_pre_close_warning();
+                this->cancel_timeout("close_watchdog");
+            }
+        }
 
         bool do_action(const cover::CoverCall &call);
         bool do_action_after_warning(cover::CoverCall call);
@@ -74,13 +80,14 @@ using namespace esphome::cover;
         void remember_pre_close_state_();
         void restore_pre_close_state_();
         void clear_pre_close_state_();
+        void cancel_movement_timeouts_();
 
         CoverClosingStartTrigger *pre_close_start_trigger{nullptr};
         CoverClosingEndTrigger   *pre_close_end_trigger{nullptr};
         uint32_t                  pre_close_duration_{0};
         bool                      pre_close_active_{false};
         bool                      toggle_only_{false};
-        CoverOperation            prev_operation{COVER_OPERATION_IDLE};
+        CoverOperation            last_motion_{COVER_OPERATION_IDLE};
         gdo_door_state_t          state_{GDO_DOOR_STATE_UNKNOWN};
         bool                      synced_{false};
         GDOComponent             *parent_{nullptr};

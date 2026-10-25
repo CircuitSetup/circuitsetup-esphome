@@ -163,7 +163,12 @@ namespace secplus_gdo {
     }
 
     void GDOComponent::defer_gdo_event(const gdo_status_t &status, gdo_cb_event_t event) {
-        this->defer([this, status, event]() { process_gdo_event(&status, event, this); });
+        this->defer([this, status, event]() {
+            if (status.protocol > 0 && status.protocol < GDO_PROTOCOL_MAX) {
+                this->status_.protocol = status.protocol;
+            }
+            process_gdo_event(&status, event, this);
+        });
     }
 
     void GDOComponent::start_gdo() {
@@ -572,9 +577,18 @@ namespace secplus_gdo {
             return;
         }
 
-        if (status.protocol != GDO_PROTOCOL_SEC_PLUS_V2) {
+        // Failed AUTO diagnostic sync clears gdolib's protocol; retain the protocol actually seen in callbacks.
+        const auto protocol = status.protocol == 0 ? this->status_.protocol : status.protocol;
+        if (protocol != GDO_PROTOCOL_SEC_PLUS_V2) {
             ESP_LOGW(TAG, "Skipping gdolib driver restart for diagnostic sync on protocol: %s",
                      gdo_protocol_type_to_string(status.protocol));
+            return;
+        }
+
+        if (status.door == GDO_DOOR_STATE_OPENING || status.door == GDO_DOOR_STATE_CLOSING ||
+            status.motor == GDO_MOTOR_STATE_ON) {
+            // Driver teardown invalidates the scheduled STOP for a partial-position move.
+            this->schedule_diagnostic_driver_restart_();
             return;
         }
 
@@ -626,6 +640,21 @@ namespace secplus_gdo {
             ESP_LOGE(TAG, "Failed to restore rolling code after gdolib driver restart: %s",
                      esp_err_to_name(rolling_code_err));
             return;
+        }
+
+        if (status.open_ms != 0) {
+            const auto err = gdo_set_open_duration(status.open_ms);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to restore open duration after gdolib driver restart: %s", esp_err_to_name(err));
+                return;
+            }
+        }
+        if (status.close_ms != 0) {
+            const auto err = gdo_set_close_duration(status.close_ms);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to restore close duration after gdolib driver restart: %s", esp_err_to_name(err));
+                return;
+            }
         }
 
         this->remember_rolling_code_(rolling_code);

@@ -20,7 +20,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import pins
-from esphome.const import CONF_ID, CONF_NUMBER, __version__ as ESPHOME_VERSION
+from esphome.const import CONF_ID, __version__ as ESPHOME_VERSION
 from esphome.core import CORE
 
 DEPENDENCIES = ["esp32", "preferences"]
@@ -91,7 +91,7 @@ def validate_cpp_symbol_id(config, key=CONF_ID):
 
 
 def validate_gdo_pins(config):
-    if config[CONF_OUTPUT_GDO][CONF_NUMBER] == config[CONF_INPUT_GDO][CONF_NUMBER]:
+    if config[CONF_OUTPUT_GDO] == config[CONF_INPUT_GDO]:
         raise cv.Invalid("input_gdo_pin and output_gdo_pin must use different pins")
     return config
 
@@ -100,8 +100,8 @@ CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(SECPLUS_GDO),
-            cv.Required(CONF_OUTPUT_GDO): pins.gpio_output_pin_schema,
-            cv.Required(CONF_INPUT_GDO): pins.gpio_input_pin_schema,
+            cv.Required(CONF_OUTPUT_GDO): pins.internal_gpio_output_pin_number,
+            cv.Required(CONF_INPUT_GDO): pins.internal_gpio_input_pin_number,
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.only_on_esp32,
@@ -132,5 +132,5 @@ async def to_code(config):
         cg.add_build_unflag("-DUSE_ESP32_CRASH_HANDLER")
         cg.add_build_flag("-Wl,--wrap=esp_panic_handler")
 
-    cg.add_define("GDO_UART_TX_PIN", config[CONF_OUTPUT_GDO][CONF_NUMBER])
-    cg.add_define("GDO_UART_RX_PIN", config[CONF_INPUT_GDO][CONF_NUMBER])
+    cg.add_define("GDO_UART_TX_PIN", config[CONF_OUTPUT_GDO])
+    cg.add_define("GDO_UART_RX_PIN", config[CONF_INPUT_GDO])

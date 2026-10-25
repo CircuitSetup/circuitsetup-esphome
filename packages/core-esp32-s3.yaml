@@ -2,7 +2,7 @@ esphome:
   name: $name
   friendly_name: $friendly_name
   name_add_mac_suffix: true
-  min_version: '2026.2.0' # Required for make_entity_preference() API (PR #13505)
+  min_version: '2026.6.0' # Required for esp32.flash_mode (PR #16920)
   project:
     name: $project_name
     version: $project_version

@@ -192,4 +192,4 @@ web_server:
 esphome:
   platformio_options:
     lib_deps:
-      - "gdolib=https://github.com/CircuitSetup/gdolib#v1.3.2"
+      - "gdolib=https://github.com/CircuitSetup/gdolib#aab03f6becc8cf6e100ea67d51975e2504890a49"
