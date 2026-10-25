@@ -5,14 +5,26 @@ binary_sensor:
     on_state:
       - if:
           condition:
-            lambda: return x;
+            lambda: return !x;
           then:
-            - cover.template.publish:
-                id: garage_door
-                state: OPEN
-                current_operation: IDLE
+            - script.stop: dry_contact_close
+            - script.execute: pre_close_warning_stop
+            - script.stop: dry_contact_motion
+            - script.stop: dry_contact_stop
+            - lambda: |-
+                id(dry_contact_position) = 0.0f;
+                id(dry_contact_next_open) = true;
+                id(garage_door).position = 0.0f;
+                id(garage_door).current_operation = COVER_OPERATION_IDLE;
+                id(garage_door).publish_state();
           else:
-            - cover.template.publish:
-                id: garage_door
-                state: CLOSED
-                current_operation: IDLE
+            - lambda: |-
+                // An opening door has only left the closed reed, not finished moving.
+                if (id(garage_door).current_operation == COVER_OPERATION_IDLE &&
+                    (!id(dry_contact_sensor_ready) || id(dry_contact_position) == 0.0f)) {
+                  id(dry_contact_position) = 1.0f;
+                  id(garage_door).position = 1.0f;
+                  id(dry_contact_next_open) = false;
+                  id(garage_door).publish_state();
+                }
+      - lambda: id(dry_contact_sensor_ready) = true;

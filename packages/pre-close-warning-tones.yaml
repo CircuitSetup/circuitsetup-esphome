@@ -3,11 +3,21 @@ button:
     id: pre_close_warning
     name: Pre-close Warning
     on_press:
-      then:
-        - light.turn_on:
-            id: warning_led
-            effect: strobe
-        - button.press: warning_tone
-        - delay: $garage_door_close_warning_duration
-        - rtttl.stop
-        - light.turn_off: warning_led
+      - script.execute: pre_close_warning_run
+
+script:
+  - id: pre_close_warning_run
+    mode: restart
+    then:
+      - light.turn_on:
+          id: warning_led
+          effect: strobe
+      - button.press: warning_tone
+      - delay: $garage_door_close_warning_duration
+      - rtttl.stop
+      - light.turn_off: warning_led
+  - id: pre_close_warning_stop
+    then:
+      - script.stop: pre_close_warning_run
+      - rtttl.stop
+      - light.turn_off: warning_led

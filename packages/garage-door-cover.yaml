@@ -1,68 +1,151 @@
+globals:
+  - id: dry_contact_position
+    type: float
+    initial_value: '0.5f'
+  - id: dry_contact_motion_start
+    type: uint32_t
+    initial_value: '0'
+  - id: dry_contact_next_open
+    type: bool
+    initial_value: 'false'
+  - id: dry_contact_sensor_ready
+    type: bool
+    initial_value: 'false'
+
 cover:
   - platform: template
     name: $garage_door_cover_name
     id: garage_door
     device_class: garage
+    assumed_state: true
+    restore_mode: NO_RESTORE
+    lambda: |-
+      if (!id(dry_contact_sensor_ready)) return {};
+      float position = id(dry_contact_position);
+      const float elapsed = millis() - id(dry_contact_motion_start);
+      if (id(garage_door).current_operation == COVER_OPERATION_OPENING)
+        position += elapsed / ${garage_door_open_duration_ms};
+      else if (id(garage_door).current_operation == COVER_OPERATION_CLOSING)
+        position -= elapsed / ${garage_door_close_duration_ms};
+      // Only the reed can confirm fully closed.
+      return clamp(position, id(garage_door_input).state ? 0.01f : 0.0f, 1.0f);
 
-    # Opens the garage door only if the garage door is currently closed
     open_action:
-      - if:
-          condition:
-            lambda: return id(garage_door).position == COVER_CLOSED;
-          then:
-            - button.press: garage_door_opener_button
-            - cover.template.publish:
-                id: garage_door
-                current_operation: OPENING
-          else:
-            - script.execute: error_tone_1
-            - lambda: ESP_LOGW("circuitsetup.gdo","Garage door is already open. Ignoring open action.");
+      - script.stop: dry_contact_close
+      - script.execute: pre_close_warning_stop
+      - lambda: |-
+          if (!id(dry_contact_sensor_ready) || ${garage_door_open_duration_ms} <= 0 ||
+              ${garage_door_close_duration_ms} <= 0) {
+            ESP_LOGW("dry_contact", "Configure both measured travel times before using door controls.");
+            return;
+          }
+          if (id(garage_door).current_operation == COVER_OPERATION_OPENING) return;
+          if (id(garage_door).current_operation != COVER_OPERATION_IDLE ||
+              id(dry_contact_stop).is_running() || id(dry_contact_pulse).is_running() ||
+              !id(dry_contact_next_open)) {
+            ESP_LOGW("dry_contact", "Open ignored: the next wall-button pulse would not start opening.");
+            return;
+          }
+          id(dry_contact_pulse).execute();
+          id(dry_contact_motion).execute(true);
 
-    
-    # Closes the garage door only if the garage door is currently open.
-    # Triggers the pre-close warning before closing
     close_action:
-      - if:
-          condition:
-            lambda: return id(garage_door).position == COVER_OPEN;
-          then:
-            - button.press: pre_close_warning
-            - delay: $garage_door_close_warning_duration
-            - button.press: garage_door_opener_button
-            - cover.template.publish:
-                id: garage_door
-                current_operation: CLOSING
-          else:
-            - script.execute: error_tone_1
-            - lambda: ESP_LOGW("circuitsetup.gdo","Garage door is already closed. Ignoring close action.");
-    
-    # Toggles the garage door open or closed
-    # If the action would cause the door to close, then the pre-close warning is
-    # triggered prior to closing
+      - lambda: |-
+          if (!id(dry_contact_sensor_ready) || ${garage_door_open_duration_ms} <= 0 ||
+              ${garage_door_close_duration_ms} <= 0) {
+            ESP_LOGW("dry_contact", "Configure both measured travel times before using door controls.");
+            return;
+          }
+          if (!id(garage_door_input).state || id(dry_contact_close).is_running() ||
+              id(garage_door).current_operation == COVER_OPERATION_CLOSING) return;
+          if (id(garage_door).current_operation != COVER_OPERATION_IDLE ||
+              id(dry_contact_stop).is_running() || id(dry_contact_pulse).is_running() ||
+              id(dry_contact_next_open)) {
+            ESP_LOGW("dry_contact", "Close ignored: the next wall-button pulse would not start closing.");
+            return;
+          }
+          id(dry_contact_close).execute();
+
+    stop_action:
+      - script.stop: dry_contact_close
+      - script.execute: pre_close_warning_stop
+      - script.execute: dry_contact_stop
+
     toggle_action:
       - if:
           condition:
-            lambda: return id(garage_door).position == COVER_OPEN;
+            lambda: return id(dry_contact_close).is_running() || id(garage_door).current_operation != COVER_OPERATION_IDLE;
           then:
-            - button.press: pre_close_warning
-            - delay: $garage_door_close_warning_duration
-            - cover.template.publish:
-                id: garage_door
-                current_operation: CLOSING
+            - script.stop: dry_contact_close
+            - script.execute: pre_close_warning_stop
+            - script.execute: dry_contact_stop
           else:
-            - cover.template.publish:
-                id: garage_door
-                current_operation: OPENING
+            - lambda: |-
+                auto call = id(garage_door).make_call();
+                if (id(dry_contact_next_open)) call.set_command_open();
+                else call.set_command_close();
+                call.perform();
+
+script:
+  - id: dry_contact_pulse
+    mode: single
+    then:
       - button.press: garage_door_opener_button
-    
-    # Triggers the garage door button to stop only if the garage door is known to be moving
-    stop_action:
+      - delay: $garage_door_opener_momentary_duration
+      # Separate consecutive presses; otherwise the output button extends one pulse.
+      - delay: 100ms
+
+  - id: dry_contact_stop
+    mode: single
+    then:
       - if:
           condition:
-            not:
-              lambda: return id(garage_door).current_operation == CoverOperation::COVER_OPERATION_IDLE;
+            lambda: return id(garage_door).current_operation != COVER_OPERATION_IDLE;
           then:
-            - button.press: garage_door_opener_button
-            - cover.template.publish:
-                id: garage_door
-                current_operation: IDLE
+            - script.wait: dry_contact_pulse
+            - if:
+                condition:
+                  lambda: return id(garage_door).current_operation != COVER_OPERATION_IDLE;
+                then:
+                  - lambda: |-
+                      id(dry_contact_position) = id(garage_door).position;
+                      id(dry_contact_motion).stop();
+                      id(dry_contact_pulse).execute();
+                      id(garage_door).current_operation = COVER_OPERATION_IDLE;
+                      id(garage_door).publish_state();
+
+  - id: dry_contact_motion
+    mode: restart
+    parameters:
+      opening: bool
+    then:
+      - lambda: |-
+          id(dry_contact_position) = id(garage_door).position;
+          id(dry_contact_motion_start) = millis();
+          id(dry_contact_next_open) = !opening;
+          id(garage_door).current_operation = opening ? COVER_OPERATION_OPENING : COVER_OPERATION_CLOSING;
+          id(garage_door).publish_state();
+      - delay: !lambda |-
+          const float fraction = opening ? 1.0f - id(dry_contact_position) : id(dry_contact_position);
+          return static_cast<uint32_t>(fraction * (opening ? ${garage_door_open_duration_ms} : ${garage_door_close_duration_ms}));
+      - lambda: |-
+          id(dry_contact_position) = !id(garage_door_input).state ? 0.0f : (opening ? 1.0f : 0.01f);
+          id(dry_contact_next_open) = !id(garage_door_input).state || !opening;
+          id(garage_door).position = id(dry_contact_position);
+          id(garage_door).current_operation = COVER_OPERATION_IDLE;
+          id(garage_door).publish_state();
+
+  - id: dry_contact_close
+    mode: single
+    then:
+      - button.press: pre_close_warning
+      - delay: $garage_door_close_warning_duration
+      - script.execute: pre_close_warning_stop
+      - if:
+          condition:
+            lambda: return id(dry_contact_sensor_ready) && id(garage_door_input).state && id(garage_door).current_operation == COVER_OPERATION_IDLE && !id(dry_contact_next_open);
+          then:
+            - script.execute: dry_contact_pulse
+            - script.execute:
+                id: dry_contact_motion
+                opening: false

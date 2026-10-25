@@ -50,7 +50,7 @@ substitutions:
   name: circuitsetup-gdo
   friendly_name: Garage Door Opener
   project_name: circuitsetup.gdo-dry-contact
-  project_version: "1.1"
+  project_version: "1.2"
   garage_door_cover_name: Garage Door
   garage_temp_name: Garage Temp
   garage_humidity_name: Garage Humidity
@@ -67,6 +67,12 @@ substitutions:
   # GARAGE DOOR CLOSE WARNING DURATION
   # Duration to blink the warning LED and beep the buzzer before the garage door closes.
   garage_door_close_warning_duration: 5s
+
+  # REQUIRED: measure full travel in each direction, in milliseconds.
+  # Zero disables remote movement until calibrated; do not guess these values.
+  # Example only: a measured 14-second opening is "14000".
+  garage_door_open_duration_ms: "0"
+  garage_door_close_duration_ms: "0"
 
   ####
   # ADDITIONAL SETTTINGS
