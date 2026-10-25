@@ -31,6 +31,10 @@ You will need:
 - A 2.4 GHz Wi-Fi network with coverage at the opener.
 - Home Assistant on a network that can reach the GDO.
 
+![Front of the CircuitSetup GDO with 3V3, GND, SCL, SDA, Aux Out, Aux In 1, Aux In 2, RED signal, WHITE ground, temperature/humidity sensor, speaker, and USB-C labeled](docs/images/gdo-hardware-overview.jpg)
+
+*Front-view hardware reference. Each connection and onboard component is labeled with its purpose. The case is removed so the connectors are visible; expansion terminals are optional for standard Security+ installation.*
+
 ### 2. Connect the module to your opener
 
 1. Unplug the opener and disconnect power from the CircuitSetup module before wiring. If the opener has battery backup, follow its manual to disconnect that too.
@@ -68,6 +72,10 @@ The Home Assistant ESPHome integration provides the controls and sensors. **ESPH
 
 You can also open **`http://<device-ip>/`** in a browser on your local network to access the device's web interface.
 
+![CircuitSetup Home Assistant screenshot with labeled door movement, opener light, pre-close warning, and temperature readings](docs/images/home-assistant-controls.png)
+
+*After adding the GDO, open its device page to find these controls. This is a published CircuitSetup example; device names, readings, and Home Assistant appearance may differ.*
+
 ### 5. Test operation and learn door travel times
 
 Keep the doorway clear and watch the door throughout these checks.
@@ -82,6 +90,10 @@ Keep the doorway clear and watch the door throughout these checks.
 The Security+ firmware learns and saves opening and closing durations from complete travel cycles. Run a full open-and-close cycle before using partial-position controls. Intermediate positions are estimated from travel time; available feedback depends on the opener.
 
 If travel times later need to be relearned, press **Reset door timings**, wait for the GDO to restart and synchronize, then repeat the full cycle.
+
+![Home Assistant configuration screenshot identifying Reset door timings and the Security+ protocol selector](docs/images/home-assistant-configuration.png)
+
+*Travel-time and protocol settings. Leave the protocol at **auto** for initial setup; the example shows **security+2.0** after detection. The image is cropped to the configuration section.*
 
 ## Everyday controls
 
@@ -116,6 +128,10 @@ Use this route when you need to reinstall the standard firmware or recover a dev
 3. Select **CircuitSetup Security+ Garage Door Opener** and the firmware version you want to install.
 4. Connect to the module's serial port and follow the installer prompts.
 5. After installation, configure Wi-Fi through the installer if offered, or use the [setup hotspot](#3-connect-to-wi-fi).
+
+![CircuitSetup web installer screenshot showing Security+ selected, the firmware version selector, and the Connect button](docs/images/web-installer-security-plus.png)
+
+*USB installation: select **CircuitSetup Security+ Garage Door Opener**, choose a firmware version, then select **Connect**. Captured October 25, 2026; the available versions may change.*
 
 Choose the **Security+** product for the wiring described in this guide. The installer also offers a separate **Dry Contact** firmware.
 
