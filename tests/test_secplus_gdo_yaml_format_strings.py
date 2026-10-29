@@ -55,16 +55,6 @@ def test_component_requires_esp32_with_esp_idf():
     assert 'cv.only_with_framework("esp-idf")' in source
 
 
-def test_gdolib_callback_defers_entity_updates_to_main_loop():
-    source = SECPLUS_COMPONENT.read_text(encoding="utf-8")
-
-    assert "static void process_gdo_event(" in source
-    assert "void GDOComponent::defer_gdo_event(" in source
-    assert "this->defer([this, status, event]()" in source
-    assert "process_gdo_event(&status, event, this);" in source
-    assert "gdo->defer_gdo_event(*status, event);" in source
-
-
 def test_resync_client_id_uses_uint32_hex_format_macro():
     source = SECPLUS_PACKAGE.read_text(encoding="utf-8")
 

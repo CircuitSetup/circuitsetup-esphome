@@ -63,8 +63,7 @@ class GDOComponent {
     std::function<void()> timeout;
     gdo_status_t status_;
     GDOComponent() { status_.protocol = 0; }
-    void defer_gdo_event(const gdo_status_t &, gdo_cb_event_t);
-    void defer(std::function<void()> fn) { fn(); }
+    void handle_gdo_event_(const gdo_status_t &, gdo_cb_event_t);
     void schedule_diagnostic_driver_restart_();
     void restart_driver_for_diagnostic_sync_();
     void set_timeout(const char *, uint32_t, std::function<void()> fn) { timeout = fn; }
@@ -95,11 +94,11 @@ int main(int argc, char **argv) {
     } else if (scenario == "auto_v2" || scenario == "auto_v1" || scenario == "auto_unknown") {
         if (scenario != "auto_unknown") {
             driver.protocol = scenario == "auto_v2" ? GDO_PROTOCOL_SEC_PLUS_V2 : 1;
-            component.defer_gdo_event(driver, 0);
+            component.handle_gdo_event_(driver, 0);
         }
         // A failed auto-detection sync resets the library protocol to zero.
         driver.protocol = 0;
-        component.defer_gdo_event(driver, 0);
+        component.handle_gdo_event_(driver, 0);
         component.restart_driver_for_diagnostic_sync_();
         assert(deinitializations == (scenario == "auto_v2" ? 1U : 0U));
     } else {
@@ -132,8 +131,8 @@ class DiagnosticRestartTests(unittest.TestCase):
         source = (ROOT / "components/secplus_gdo/secplus_gdo.cpp").read_text(encoding="utf-8")
         start = source.index("    void GDOComponent::schedule_diagnostic_driver_restart_()")
         end = source.index("    void GDOComponent::reset_diagnostic_resync_state()", start)
-        callback_start = source.index("    void GDOComponent::defer_gdo_event(")
-        callback_end = source.index("    void GDOComponent::start_gdo()", callback_start)
+        callback_start = source.index("    void GDOComponent::handle_gdo_event_(")
+        callback_end = source.index("    void GDOComponent::loop()", callback_start)
         harness = Path(cls.temp.name) / "restart.cpp"
         harness.write_text(STUBS + source[callback_start:callback_end] + source[start:end] + CASES, encoding="utf-8")
         cls.executable = Path(cls.temp.name) / "restart"
