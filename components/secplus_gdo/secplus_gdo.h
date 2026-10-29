@@ -137,6 +137,7 @@ namespace secplus_gdo {
     protected:
         void handle_gdo_event_(const gdo_status_t &status, gdo_cb_event_t event);
         bool republish_status_();
+        void reset_event_queue_();
         esp_err_t init_driver_();
         void remember_rolling_code_(uint32_t num);
         void release_uart_tx_pin_to_safe_state_();
@@ -151,6 +152,7 @@ namespace secplus_gdo {
         LockFreeQueue<GDOEvent, GDO_EVENT_QUEUE_LENGTH> event_queue_;
         std::atomic<bool> refresh_needed_{false};
         std::atomic<bool> sync_event_dropped_{false};
+        std::atomic<bool> motor_on_event_dropped_{false};
 
         gdo_status_t      status_{};
         GDOBinarySensor  *motion_sensor_{nullptr};

@@ -27,9 +27,13 @@ STUBS = r"""
 #define ESP_LOGE(...) assert(!callback_context)
 using esp_err_t = int;
 using gdo_cb_event_t = int;
+using gdo_motor_state_t = int;
 constexpr int ESP_OK = 0, GDO_PROTOCOL_SEC_PLUS_V2 = 2, GDO_PROTOCOL_MAX = 4;
 constexpr int GDO_CB_EVENT_SYNCED = 0, GDO_CB_EVENT_LIGHT = 1;
-constexpr int GDO_DOOR_STATE_UNKNOWN = 0, GDO_MOTOR_STATE_ON = 1, GDO_BUTTON_STATE_PRESSED = 1;
+constexpr int GDO_CB_EVENT_OPEN_DURATION_MEASUREMENT = 2, GDO_CB_EVENT_CLOSE_DURATION_MEASUREMENT = 3;
+constexpr int GDO_CB_EVENT_MOTOR = 4;
+constexpr int GDO_DOOR_STATE_UNKNOWN = 0, GDO_MOTOR_STATE_ON = 1, GDO_MOTOR_STATE_OFF = 0,
+              GDO_BUTTON_STATE_PRESSED = 1;
 struct gdo_paired_device_t { uint8_t total_all = 0; };
 struct gdo_status_t {
     int protocol = 2, door = 0, light = 0, lock = 0, motion = 0, obstruction = 0;
@@ -49,7 +53,11 @@ int gdo_get_status(gdo_status_t *out) {
     if (during_status_read) { auto fn = during_status_read; during_status_read = {}; fn(); }
     return status_error;
 }
-struct Sensor { bool state = false; void publish(bool value) { assert(!callback_context); state = value; } };
+struct Sensor {
+    bool state = false;
+    unsigned activations = 0;
+    void publish(bool value) { assert(!callback_context); state = value; if (value) ++activations; }
+};
 using namespace esphome;
 """
 
@@ -58,19 +66,22 @@ class GDOComponent {
 public:
     gdo_status_t status_;
     bool initialized_ = false, enabled = true, pending_wake = false;
-    int defer_calls = 0, sync_events = 0, button_actions = 0, motor_actions = 0;
+    int defer_calls = 0, sync_events = 0, button_actions = 0;
+    bool button_triggered_ = false, cover_triggered_ = false;
     std::vector<std::function<void()>> deferred;
     std::vector<uint32_t> seen;
     std::vector<uint32_t> sync_codes;
     std::function<void()> during_disable;
     std::map<std::string, double> states;
-    Sensor button, motor;
+    Sensor button, motor, wireless_remote;
     Sensor *button_sensor_ = &button, *motor_sensor_ = &motor;
+    Sensor *wireless_remote_sensor_ = &wireless_remote;
     void setup();
     void loop();
     void defer_gdo_event(const gdo_status_t &, gdo_cb_event_t);
     void handle_gdo_event_(const gdo_status_t &, gdo_cb_event_t);
     bool republish_status_();
+    void reset_event_queue_();
     void defer(std::function<void()> fn) { ++defer_calls; deferred.push_back(fn); }
     void enable_loop_soon_any_context() { pending_wake = true; }
     void disable_loop() { if (during_disable) { auto fn = during_disable; during_disable = {}; fn(); } enabled = false; }
@@ -99,8 +110,10 @@ public:
     void set_learn_state(int value) { states["learn"] = value; }
     void set_openings(uint16_t value) { states["openings"] = value; }
     void set_paired_devices(const gdo_paired_device_t &value) { states["paired"] = value.total_all; }
+    void set_open_duration(uint16_t value) { states["open_ms"] = value; }
+    void set_close_duration(uint16_t value) { states["close_ms"] = value; }
     void set_button_state(int) { ++button_actions; }
-    void set_motor_state(int) { ++motor_actions; }
+    void set_motor_state(gdo_motor_state_t state);
 """
 
 PROCESS = r"""
@@ -157,7 +170,27 @@ int main(int argc, char **argv) {
         driver.light = driver.lock = driver.obstruction = driver.motion = 1;
         driver.battery = driver.learn = driver.motor = driver.button = 1;
         driver.openings = 7; driver.paired_devices.total_all = 3;
-        if (scenario == "read_error" || scenario == "sync_read_error") status_error = 1;
+        if (scenario == "auto_probe") {
+            gdo.states["protocol"] = 0;
+            driver.protocol = 1; driver.synced = false; driver.door = GDO_DOOR_STATE_UNKNOWN;
+        }
+        if (scenario.rfind("motor_", 0) == 0) {
+            // A cover command or earlier button event normally sets this attribution.
+            gdo.button_triggered_ = scenario == "motor_button";
+            gdo.cover_triggered_ = scenario != "motor_button";
+            if (scenario != "motor_pending") enqueue(gdo, driver, GDO_CB_EVENT_MOTOR);
+            driver.motor = GDO_MOTOR_STATE_OFF;
+            if (scenario != "motor_pending") enqueue(gdo, driver, GDO_CB_EVENT_MOTOR);
+        }
+        if (scenario == "calibration" || scenario == "uncalibrated") {
+            gdo.states["open_ms"] = 14000; gdo.states["close_ms"] = 17000;
+            if (scenario == "calibration") {
+                driver.open_ms = 22000; driver.close_ms = 21000;
+                enqueue(gdo, driver, GDO_CB_EVENT_OPEN_DURATION_MEASUREMENT);
+                enqueue(gdo, driver, GDO_CB_EVENT_CLOSE_DURATION_MEASUREMENT);
+            }
+        }
+        if (scenario == "read_error" || scenario == "sync_read_error" || scenario == "motor_read_error") status_error = 1;
         if (scenario == "sync_race") {
             during_status_read = [&]() {
                 driver.rolling_code = 700;
@@ -166,6 +199,15 @@ int main(int argc, char **argv) {
             };
         }
         gdo.pump();
+        if (scenario == "auto_probe") {
+            assert(gdo.status_.protocol == 1 && gdo.states["sync"] == 0);
+            assert(gdo.states["protocol"] == 0);
+            driver.protocol = 2; driver.synced = true;
+            for (int i = 0; i < 80; ++i) enqueue(gdo, driver);
+            gdo.pump();
+            assert(gdo.states["protocol"] == 2);
+            return 0;
+        }
         if (scenario == "sync_race") {
             assert(gdo.sync_events == 0);
             gdo.pump();
@@ -173,7 +215,7 @@ int main(int argc, char **argv) {
             return 0;
         }
         assert(gdo.seen.size() <= 32);
-        if (scenario == "read_error" || scenario == "sync_read_error") {
+        if (scenario == "read_error" || scenario == "sync_read_error" || scenario == "motor_read_error") {
             assert(gdo.states.empty());
             status_error = ESP_OK;
             gdo.pump();
@@ -189,8 +231,18 @@ int main(int argc, char **argv) {
         for (const char *name : {"light", "lock", "obstruction", "motion", "battery", "learn"})
             assert(gdo.states[name] == 1);
         assert(gdo.states["paired"] == 3 && gdo.states["openings"] == 7);
-        assert(gdo.button.state && gdo.motor.state);
-        assert(gdo.button_actions == 0 && gdo.motor_actions == 0);
+        assert(gdo.button.state && gdo.motor.state == (driver.motor == GDO_MOTOR_STATE_ON));
+        assert(gdo.button_actions == 0 && gdo.wireless_remote.activations == 0);
+        if (scenario.rfind("motor_", 0) == 0) {
+            gdo.set_motor_state(GDO_MOTOR_STATE_ON);
+            assert(gdo.wireless_remote.activations == (scenario == "motor_pending" ? 0U : 1U));
+            assert(!gdo.button_triggered_ && !gdo.cover_triggered_);
+        }
+        if (scenario == "calibration") {
+            assert(gdo.states["open_ms"] == 22000 && gdo.states["close_ms"] == 21000);
+        } else if (scenario == "uncalibrated") {
+            assert(gdo.states["open_ms"] == 14000 && gdo.states["close_ms"] == 17000);
+        }
         const auto reads = status_reads;
         gdo.pump();
         assert(status_reads == reads);
@@ -213,7 +265,7 @@ class EventQueueTests(unittest.TestCase):
         harness += "void process_gdo_event(const gdo_status_t *, gdo_cb_event_t, GDOComponent *);\n"
         harness += method(source, "static void gdo_event_handler(")
         harness += PROCESS
-        for name in ("defer_gdo_event", "setup", "handle_gdo_event_", "republish_status_", "loop"):
+        for name in ("defer_gdo_event", "setup", "handle_gdo_event_", "republish_status_", "loop", "set_motor_state", "reset_event_queue_"):
             harness += method(source, f"GDOComponent::{name}(")
         harness += CASES
         cpp = Path(cls.temp.name) / "events.cpp"
@@ -245,6 +297,23 @@ class EventQueueTests(unittest.TestCase):
 
     def test_new_sync_drop_during_refresh_uses_a_new_snapshot(self):
         subprocess.run([str(self.executable), "sync_race"], check=True)
+
+    def test_overflow_recovers_learned_travel_calibration(self):
+        subprocess.run([str(self.executable), "calibration"], check=True)
+
+    def test_unknown_driver_calibration_does_not_clear_saved_durations(self):
+        subprocess.run([str(self.executable), "uncalibrated"], check=True)
+
+    def test_dropped_motor_on_does_not_hide_the_next_remote_activation(self):
+        for scenario in ("motor_button", "motor_cover", "motor_read_error"):
+            with self.subTest(scenario=scenario):
+                subprocess.run([str(self.executable), scenario], check=True)
+
+    def test_unrelated_overflow_retains_attribution_for_a_pending_command(self):
+        subprocess.run([str(self.executable), "motor_pending"], check=True)
+
+    def test_overflow_does_not_persist_a_tentative_auto_protocol(self):
+        subprocess.run([str(self.executable), "auto_probe"], check=True)
 
 
 if __name__ == "__main__":

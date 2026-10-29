@@ -169,6 +169,9 @@ namespace secplus_gdo {
             if (event == GDO_CB_EVENT_SYNCED) {
                 this->sync_event_dropped_.store(true, std::memory_order_release);
             }
+            if (event == GDO_CB_EVENT_MOTOR && status.motor == GDO_MOTOR_STATE_ON) {
+                this->motor_on_event_dropped_.store(true, std::memory_order_release);
+            }
             this->refresh_needed_.store(true, std::memory_order_release);
         } else {
             slot->status = status;
@@ -208,17 +211,28 @@ namespace secplus_gdo {
     bool GDOComponent::republish_status_() {
         // A sync event dropped after this exchange belongs to the next snapshot.
         const bool sync_event_dropped = this->sync_event_dropped_.exchange(false, std::memory_order_acquire);
+        const bool motor_on_event_dropped = this->motor_on_event_dropped_.exchange(false, std::memory_order_acquire);
         gdo_status_t status{};
         if (gdo_get_status(&status) != ESP_OK) {
             if (sync_event_dropped) {
                 this->sync_event_dropped_.store(true, std::memory_order_release);
             }
+            if (motor_on_event_dropped) {
+                this->motor_on_event_dropped_.store(true, std::memory_order_release);
+            }
             return false;
         }
 
+        // Consume the old command attribution before publishing can trigger a new command.
+        if (motor_on_event_dropped) {
+            this->button_triggered_ = false;
+            this->cover_triggered_ = false;
+        }
         if (status.protocol > 0 && status.protocol < GDO_PROTOCOL_MAX) {
             this->status_.protocol = status.protocol;
-            this->set_protocol_state(status.protocol);
+            if (status.synced) {
+                this->set_protocol_state(status.protocol);
+            }
         }
         if (sync_event_dropped) {
             this->handle_gdo_event_(status, GDO_CB_EVENT_SYNCED);
@@ -239,6 +253,12 @@ namespace secplus_gdo {
         this->set_learn_state(status.learn);
         this->set_openings(status.openings);
         this->set_paired_devices(status.paired_devices);
+        if (status.open_ms != 0) {
+            this->set_open_duration(status.open_ms);
+        }
+        if (status.close_ms != 0) {
+            this->set_close_duration(status.close_ms);
+        }
 
         // Refresh latched button/motor levels without repeating press or remote-detection side effects.
         if (this->button_sensor_ != nullptr) {
@@ -505,11 +525,23 @@ namespace secplus_gdo {
         ESP_LOGI(TAG, "secplus GDO started");
     }
 
-    void GDOComponent::setup() {
-        this->status_ = {};
+    void GDOComponent::reset_event_queue_() {
+        // The gdolib producer must be stopped; reclaim even a slot abandoned mid-callback.
+        while (this->event_queue_.pop() != nullptr) {}
+        while (this->free_events_.pop() != nullptr) {}
         for (auto &slot : this->event_slots_) {
             this->free_events_.push(&slot);
         }
+        this->event_queue_.get_and_reset_dropped_count();
+        this->free_events_.get_and_reset_dropped_count();
+        this->refresh_needed_.store(false, std::memory_order_relaxed);
+        this->sync_event_dropped_.store(false, std::memory_order_relaxed);
+        this->motor_on_event_dropped_.store(false, std::memory_order_relaxed);
+    }
+
+    void GDOComponent::setup() {
+        this->status_ = {};
+        this->reset_event_queue_();
 
         // Initialize the driver first so child entities can restore saved preferences before we start it.
         const auto init_err = this->init_driver_();
@@ -575,6 +607,7 @@ namespace secplus_gdo {
         this->release_uart_tx_pin_to_safe_state_();
         this->initialized_ = false;
         this->started_ = false;
+        this->reset_event_queue_();
     }
 
     void GDOComponent::remember_rolling_code_(uint32_t num) {
@@ -693,6 +726,7 @@ namespace secplus_gdo {
         this->release_uart_tx_pin_to_safe_state_();
         this->initialized_ = false;
         this->started_ = false;
+        this->reset_event_queue_();
 
         const auto init_err = this->init_driver_();
         if (init_err != ESP_OK) {

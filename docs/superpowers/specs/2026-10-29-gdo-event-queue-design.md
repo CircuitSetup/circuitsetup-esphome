@@ -28,6 +28,13 @@ button presses, remote activations, or duration measurements during refresh.
 Retry a failed status read without losing the refresh request. Disable the loop
 when idle, using ESPHome's pending wake request to cover enqueue/disable races.
 
+Refresh nonzero latched travel durations so dropped measurements still reach
+saved calibration. Persist a protocol selection only after completed sync.
+Consume attribution for a dropped motor-on event without creating a remote
+pulse. Rebuild queues only while the producer is stopped, including after
+successful driver teardown, so stale callbacks and abandoned slots do not
+survive a restart.
+
 No gdolib edit or version pin change, Konnected project version, release, flash,
 or physical door operation is included. Host checks must cover snapshot order,
 bounded overflow, recovery, and idle wakeup; build if the environment permits.

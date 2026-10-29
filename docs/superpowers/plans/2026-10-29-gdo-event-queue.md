@@ -76,3 +76,23 @@ the callback entry point. Add `loop()`, `handle_gdo_event_()`, and
   on that tag being available. Full ESP32-S3 firmware compilation passed on
   ESPHome 2026.10.0 against that immutable 1.4.0 candidate (RAM 139263/341760
   bytes; flash 1287283/1835008 bytes). The published tag remains pending.
+
+## PR review corrections
+
+- Persist nonzero travel durations during overflow refresh; otherwise a lost
+  measurement never reaches preferences and disappears on reboot.
+- Remember dropped motor-on events, consume their old button/cover attribution
+  before publishing refreshed state, and retain that recovery across read errors.
+  An unrelated overflow must preserve attribution for a command still pending.
+- Keep tentative AUTO protocol values in internal tracking only; update the
+  saved selector after completed sync, matching the normal event handler.
+- After successful driver teardown, discard obsolete queued callbacks and
+  rebuild all slots, including any abandoned by a terminated callback. Clear
+  counters and recovery flags; leave queues alone when teardown fails.
+- Each defect was reproduced before its fix. Host regressions now execute the
+  real motor handler and the real queue cleanup/restart paths.
+- Review fixes are P2 correctness issues; P3 issues are excluded at the user's request.
+- Final verification: 48 tests and 34 subtests passed on ESPHome 2026.10.0;
+  all 20 queue/restart host checks also passed with ESPHome 2026.2.1 headers.
+  The final ESP32-S3 build passed against gdolib candidate `cd49b09` (RAM
+  139263/341760 bytes; flash 1287639/1835008 bytes). No hardware was operated.
