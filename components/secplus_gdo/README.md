@@ -14,12 +14,6 @@ Use the direct `secplus_gdo` component path when you want to:
 
 The component starts automatically during setup. You do not need a separate `wifi.on_connect` automation to call `id(cs_gdo).start_gdo()`.
 
-Gdolib callbacks copy status into a fixed queue; entity updates, logs, preferences,
-and sync recovery run on ESPHome's main loop. This addresses the task-safety problem
-behind [upstream issue #148](https://github.com/konnected-io/konnected-esphome/issues/148),
-where web events overflowed gdolib's task stack on ESPHome 2026.10. Queue overflow
-refreshes the current state without replaying button presses or motion actions.
-
 ## Minimal Working Example
 
 ```yaml
@@ -30,7 +24,7 @@ external_components:
 esphome:
   platformio_options:
     lib_deps:
-      - "gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"
+      - "gdolib=https://github.com/CircuitSetup/gdolib#v1.3.3"
 
 secplus_gdo:
   id: cs_gdo

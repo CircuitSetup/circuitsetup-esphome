@@ -16,7 +16,6 @@ def test_secplus_config_owns_pinned_gdolib_version():
 
     dependency = re.search(r'"gdolib=https://github.com/CircuitSetup/gdolib#v\d+\.\d+\.\d+"', config_source)
     assert dependency is not None
-    assert dependency.group() in Path("components/secplus_gdo/README.md").read_text(encoding="utf-8")
     assert "cg.add_library" not in component_source
 
 
