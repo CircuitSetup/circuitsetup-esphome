@@ -31,3 +31,11 @@ when idle, using ESPHome's pending wake request to cover enqueue/disable races.
 No gdolib edit or version pin change, Konnected project version, release, flash,
 or physical door operation is included. Host checks must cover snapshot order,
 bounded overflow, recovery, and idle wakeup; build if the environment permits.
+
+## Follow-up release metadata
+
+The user subsequently requested a PR, firmware version **1.6.0**, and a gdolib
+**v1.4.0** pin. This extends the original scope to the Security+ version and its
+documented dependency. Gdolib source remains owned by the other task:
+[gdolib PR #9](https://github.com/CircuitSetup/gdolib/pull/9). The firmware PR
+must wait for that PR's merge and published v1.4.0 tag before merging.

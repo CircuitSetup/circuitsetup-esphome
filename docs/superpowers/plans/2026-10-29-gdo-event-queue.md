@@ -65,3 +65,14 @@ the callback entry point. Add `loop()`, `handle_gdo_event_()`, and
   Reported RAM: 139255/341760 bytes; flash: 1285895/1835008 bytes.
 - No firmware was flashed; web `/events` stack usage and physical door behavior
   still require hardware validation.
+
+## Follow-up release metadata
+
+- User requested Security+ firmware **1.5.9 → 1.6.0**, gdolib **v1.4.0**, and a PR.
+- Update the version and dependency in the Security+ YAML, and match the direct
+  component README's pin. The full suite passes: 40 tests and 31 subtests.
+- Gdolib PR #9 targets 1.4.0 at `cd49b090817b331c5df483b25e14ce6fb550a695`.
+  Its release workflow publishes v1.4.0 after merge, so this firmware PR depends
+  on that tag being available. Full ESP32-S3 firmware compilation passed on
+  ESPHome 2026.10.0 against that immutable 1.4.0 candidate (RAM 139263/341760
+  bytes; flash 1287283/1835008 bytes). The published tag remains pending.
