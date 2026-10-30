@@ -18,10 +18,13 @@
 
 #pragma once
 
+#include <atomic>
+
 #include "binary_sensor/gdo_binary_sensor.h"
 #include "cover/gdo_door.h"
 #include "esphome/core/component.h"
 #include "esphome/core/defines.h"
+#include "esphome/core/lock_free_queue.h"
 #include "gdo.h"
 #include "light/gdo_light.h"
 #include "lock/gdo_lock.h"
@@ -34,9 +37,17 @@
 namespace esphome {
 namespace secplus_gdo {
 
+    struct GDOEvent {
+        gdo_status_t status;
+        gdo_cb_event_t event;
+    };
+
+    constexpr uint8_t GDO_EVENT_QUEUE_LENGTH = 32;
+
     class GDOComponent : public Component {
     public:
         void setup() override;
+        void loop() override;
         void dump_config() override;
         void on_shutdown() override;
         void start_gdo();
@@ -124,6 +135,9 @@ namespace secplus_gdo {
         void set_sync_state(bool synced);
 
     protected:
+        void handle_gdo_event_(const gdo_status_t &status, gdo_cb_event_t event);
+        bool republish_status_();
+        void reset_event_queue_();
         esp_err_t init_driver_();
         void remember_rolling_code_(uint32_t num);
         void release_uart_tx_pin_to_safe_state_();
@@ -131,6 +145,14 @@ namespace secplus_gdo {
         void restart_driver_for_diagnostic_sync_();
         void sync_toggle_only_();
         void start_if_ready_();
+
+        GDOEvent event_slots_[GDO_EVENT_QUEUE_LENGTH - 1]{};
+        // A ring queue holds one fewer item than its size; every slot fits in either queue.
+        LockFreeQueue<GDOEvent, GDO_EVENT_QUEUE_LENGTH> free_events_;
+        LockFreeQueue<GDOEvent, GDO_EVENT_QUEUE_LENGTH> event_queue_;
+        std::atomic<bool> refresh_needed_{false};
+        std::atomic<bool> sync_event_dropped_{false};
+        std::atomic<bool> motor_on_event_dropped_{false};
 
         gdo_status_t      status_{};
         GDOBinarySensor  *motion_sensor_{nullptr};

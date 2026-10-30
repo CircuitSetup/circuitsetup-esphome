@@ -129,7 +129,10 @@ struct Application { Scheduler scheduler; void *get_current_source() { return nu
 template<class T, class... Ts> struct Value { std::function<T(Ts...)> f; T value(Ts... args) { return f(args...); } };
 #define TEMPLATABLE_VALUE(type, name) Value<type, Ts...> name##_; template<class F> void set_##name(F f) { name##_.f=f; }
 '''
-source += automation[automation.index("template<typename... Ts> class Condition") :]
+automation_start = automation.index("template<typename... Ts> class Condition")
+if "using stored_trigger_arg_t" in automation:
+    automation_start = automation.rfind("template<typename T>", 0, automation.index("using stored_trigger_arg_t"))
+source += automation[automation_start:]
 source += "namespace esphome {\n"
 for name in ("LambdaCondition", "NotCondition", "DelayAction", "LambdaAction", "ContinuationAction"):
     source += cpp_class(name)

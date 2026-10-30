@@ -155,20 +155,119 @@ namespace secplus_gdo {
     static void gdo_event_handler(const gdo_status_t *status, gdo_cb_event_t event, void *arg) {
         auto *gdo = static_cast<GDOComponent *>(arg);
         if (gdo == nullptr || status == nullptr) {
-            ESP_LOGE(TAG, "Received invalid callback state from gdolib");
             return;
         }
 
         gdo->defer_gdo_event(*status, event);
     }
 
+    // gdolib's task must not publish, log, allocate, or touch ESPHome's scheduler (#148 upstream).
     void GDOComponent::defer_gdo_event(const gdo_status_t &status, gdo_cb_event_t event) {
-        this->defer([this, status, event]() {
-            if (status.protocol > 0 && status.protocol < GDO_PROTOCOL_MAX) {
-                this->status_.protocol = status.protocol;
+        auto *slot = this->free_events_.pop();
+        if (slot == nullptr) {
+            this->event_queue_.increment_dropped_count();
+            if (event == GDO_CB_EVENT_SYNCED) {
+                this->sync_event_dropped_.store(true, std::memory_order_release);
             }
-            process_gdo_event(&status, event, this);
-        });
+            if (event == GDO_CB_EVENT_MOTOR && status.motor == GDO_MOTOR_STATE_ON) {
+                this->motor_on_event_dropped_.store(true, std::memory_order_release);
+            }
+            this->refresh_needed_.store(true, std::memory_order_release);
+        } else {
+            slot->status = status;
+            slot->event = event;
+            // With a slot held here, the equally sized event queue cannot be full.
+            this->event_queue_.push(slot);
+        }
+        this->enable_loop_soon_any_context();
+    }
+
+    void GDOComponent::handle_gdo_event_(const gdo_status_t &status, gdo_cb_event_t event) {
+        if (status.protocol > 0 && status.protocol < GDO_PROTOCOL_MAX) {
+            this->status_.protocol = status.protocol;
+        }
+        process_gdo_event(&status, event, this);
+    }
+
+    void GDOComponent::loop() {
+        while (auto *slot = this->event_queue_.pop()) {
+            this->handle_gdo_event_(slot->status, slot->event);
+            this->free_events_.push(slot);
+        }
+
+        const auto dropped = this->event_queue_.get_and_reset_dropped_count();
+        if (dropped != 0) {
+            ESP_LOGW(TAG, "Dropped %" PRIu16 " GDO events, refreshing current status", dropped);
+        }
+        if (this->refresh_needed_.exchange(false, std::memory_order_acquire) && !this->republish_status_()) {
+            this->refresh_needed_.store(true, std::memory_order_release);
+            return;
+        }
+
+        // ESPHome applies pending cross-task wake requests after this disable.
+        this->disable_loop();
+    }
+
+    bool GDOComponent::republish_status_() {
+        // A sync event dropped after this exchange belongs to the next snapshot.
+        const bool sync_event_dropped = this->sync_event_dropped_.exchange(false, std::memory_order_acquire);
+        const bool motor_on_event_dropped = this->motor_on_event_dropped_.exchange(false, std::memory_order_acquire);
+        gdo_status_t status{};
+        if (gdo_get_status(&status) != ESP_OK) {
+            if (sync_event_dropped) {
+                this->sync_event_dropped_.store(true, std::memory_order_release);
+            }
+            if (motor_on_event_dropped) {
+                this->motor_on_event_dropped_.store(true, std::memory_order_release);
+            }
+            return false;
+        }
+
+        // Consume the old command attribution before publishing can trigger a new command.
+        if (motor_on_event_dropped) {
+            this->button_triggered_ = false;
+            this->cover_triggered_ = false;
+        }
+        if (status.protocol > 0 && status.protocol < GDO_PROTOCOL_MAX) {
+            this->status_.protocol = status.protocol;
+            if (status.synced) {
+                this->set_protocol_state(status.protocol);
+            }
+        }
+        if (sync_event_dropped) {
+            this->handle_gdo_event_(status, GDO_CB_EVENT_SYNCED);
+        } else {
+            const bool effective_synced = status.synced || status.door != GDO_DOOR_STATE_UNKNOWN;
+            this->set_sync_state(effective_synced);
+            if (effective_synced && status.protocol == GDO_PROTOCOL_SEC_PLUS_V2) {
+                this->set_client_id(status.client_id);
+                this->set_rolling_code(status.rolling_code);
+            }
+        }
+        this->set_door_state(status.door, static_cast<float>(10000 - status.door_position) / 10000.0f);
+        this->set_light_state(status.light);
+        this->set_lock_state(status.lock);
+        this->set_obstruction(status.obstruction);
+        this->set_motion_state(status.motion);
+        this->set_battery_state(status.battery);
+        this->set_learn_state(status.learn);
+        this->set_openings(status.openings);
+        this->set_paired_devices(status.paired_devices);
+        if (status.open_ms != 0) {
+            this->set_open_duration(status.open_ms);
+        }
+        if (status.close_ms != 0) {
+            this->set_close_duration(status.close_ms);
+        }
+
+        // Refresh latched button/motor levels without repeating press or remote-detection side effects.
+        if (this->button_sensor_ != nullptr) {
+            this->button_sensor_->publish(status.button == GDO_BUTTON_STATE_PRESSED);
+        }
+        if (this->motor_sensor_ != nullptr) {
+            this->motor_sensor_->publish(status.motor == GDO_MOTOR_STATE_ON);
+        }
+        return true;
     }
 
     void GDOComponent::start_gdo() {
@@ -426,8 +525,23 @@ namespace secplus_gdo {
         ESP_LOGI(TAG, "secplus GDO started");
     }
 
+    void GDOComponent::reset_event_queue_() {
+        // The gdolib producer must be stopped; reclaim even a slot abandoned mid-callback.
+        while (this->event_queue_.pop() != nullptr) {}
+        while (this->free_events_.pop() != nullptr) {}
+        for (auto &slot : this->event_slots_) {
+            this->free_events_.push(&slot);
+        }
+        this->event_queue_.get_and_reset_dropped_count();
+        this->free_events_.get_and_reset_dropped_count();
+        this->refresh_needed_.store(false, std::memory_order_relaxed);
+        this->sync_event_dropped_.store(false, std::memory_order_relaxed);
+        this->motor_on_event_dropped_.store(false, std::memory_order_relaxed);
+    }
+
     void GDOComponent::setup() {
         this->status_ = {};
+        this->reset_event_queue_();
 
         // Initialize the driver first so child entities can restore saved preferences before we start it.
         const auto init_err = this->init_driver_();
@@ -493,6 +607,7 @@ namespace secplus_gdo {
         this->release_uart_tx_pin_to_safe_state_();
         this->initialized_ = false;
         this->started_ = false;
+        this->reset_event_queue_();
     }
 
     void GDOComponent::remember_rolling_code_(uint32_t num) {
@@ -611,6 +726,7 @@ namespace secplus_gdo {
         this->release_uart_tx_pin_to_safe_state_();
         this->initialized_ = false;
         this->started_ = false;
+        this->reset_event_queue_();
 
         const auto init_err = this->init_driver_();
         if (init_err != ESP_OK) {
