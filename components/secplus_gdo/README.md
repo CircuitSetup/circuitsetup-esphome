@@ -60,11 +60,11 @@ The UART pins must be distinct internal ESP32 GPIO numbers. Pin inversion, custo
 
 `secplus_gdo` declares its tested gdolib release in `to_code()` in [`__init__.py`](__init__.py). ESPHome installs that dependency automatically; no YAML `lib_deps` entry is needed.
 
-When upgrading an older local configuration, remove its `gdolib=...` entry from `esphome.platformio_options.lib_deps`. Keep any unrelated library dependencies. A separate gdolib pin can conflict with the version required by the component.
+Legacy `gdolib=...` entries in `esphome.platformio_options.lib_deps` are automatically replaced with the component's tested dependency during validation. Both list and scalar forms are supported, and unrelated libraries are preserved. Your YAML file is not modified, so existing configurations need no manual edit.
 
-For the first build after removing the YAML pin, ensure the external component cache has refreshed so it contains the new dependency declaration. You can temporarily set `refresh: 0s` on its `external_components` entry, then restore the normal interval after migrating.
+For the first build with this dependency handling, ensure the external component cache has refreshed. You can temporarily set `refresh: 0s` on its `external_components` entry, then restore the normal interval after migrating.
 
-Maintainers must update the Git tag in `cg.add_library()` when adopting a new gdolib release. After ESPHome refreshes the external component, its next build uses the pin from that component. Publishing a gdolib release alone does not change the pin. Remote components have a default refresh interval of one day; see [ESPHome external-component refresh](https://esphome.io/components/external_components/#refresh).
+Maintainers must update the Git tag in `GDOLIB_REPOSITORY` in `__init__.py` when adopting a new gdolib release. After ESPHome refreshes the external component, its next build uses the pin from that component. Publishing a gdolib release alone does not change the pin. Remote components have a default refresh interval of one day; see [ESPHome external-component refresh](https://esphome.io/components/external_components/#refresh).
 
 The standalone component supports ESPHome `2026.2.0+`; the full CircuitSetup configuration requires `2026.6.0+`.
 
@@ -82,7 +82,7 @@ external_components:
 
 If you also need to edit package files such as `packages/secplus-gdo.yaml` or `packages/wifi-esp32.yaml`, use a local copy of the full top-level YAML instead of the remote package import.
 
-To test a different gdolib release or fork, change the `cg.add_library()` URL in your local component copy.
+To test a different gdolib release or fork, change `GDOLIB_REPOSITORY` in your local component copy.
 
 ## Supported Entity Types
 
