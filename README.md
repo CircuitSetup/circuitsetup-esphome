@@ -119,6 +119,10 @@ If the device is managed in **ESPHome Device Builder**, open its configuration, 
 
 Compiling the supplied packages requires **ESPHome 2026.6.0 or newer**. Updating Home Assistant alone does not update ESPHome Device Builder.
 
+The `secplus_gdo` component declares its tested gdolib dependency, so refreshing the component also brings its required library pin into the next build. ESPHome checks remote components for updates once per day by default.
+
+If your local YAML has an older `gdolib=...` entry under `esphome.platformio_options.lib_deps`, remove that entry and keep any unrelated dependencies. The standard remote package import needs no local gdolib pin. See the [component dependency guide](components/secplus_gdo/README.md#gdolib-dependency) for release and development details.
+
 ### Install or recover firmware over USB
 
 Use this route when you need to reinstall the standard firmware or recover a device that cannot be reached over Wi-Fi.

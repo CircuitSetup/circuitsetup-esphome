@@ -121,6 +121,8 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
+    cg.add_library("gdolib", None, "https://github.com/CircuitSetup/gdolib#v1.4.0")
+
     if (
         CORE.is_esp32
         and CORE.target_framework == "esp-idf"

@@ -1,22 +1,63 @@
 from pathlib import Path
-import re
+import subprocess
+import sys
 
 
 SECPLUS_PACKAGE = Path("packages/secplus-gdo.yaml")
-SECPLUS_CONFIG = Path("circuitsetup-secplus-garage-door-opener.yaml")
 CORE_PACKAGE = Path("packages/core-esp32-s3.yaml")
 SECPLUS_INIT = Path("components/secplus_gdo/__init__.py")
 SECPLUS_COMPONENT = Path("components/secplus_gdo/secplus_gdo.cpp")
 GDO_DOOR_COMPONENT = Path("components/secplus_gdo/cover/gdo_door.cpp")
 
 
-def test_secplus_config_owns_pinned_gdolib_version():
-    component_source = SECPLUS_INIT.read_text(encoding="utf-8")
-    config_source = SECPLUS_CONFIG.read_text(encoding="utf-8")
+def test_secplus_component_registers_pinned_gdolib_without_yaml_dependency(tmp_path):
+    config_path = tmp_path / "dependency.yaml"
+    config_path.write_text(
+        f"""esphome:
+  name: dependency-check
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+external_components:
+  - source:
+      type: local
+      path: {SECPLUS_INIT.resolve().parents[1].as_posix()}
+    components: [secplus_gdo]
+secplus_gdo:
+  input_gdo_pin: GPIO2
+  output_gdo_pin: GPIO1
+""",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", """
+import sys
+from pathlib import Path
+from esphome.config import read_config
+from esphome.__main__ import generate_cpp_contents
+from esphome.core import CORE
 
-    dependency = re.search(r'"gdolib=https://github.com/CircuitSetup/gdolib#v\d+\.\d+\.\d+"', config_source)
-    assert dependency is not None
-    assert "cg.add_library" not in component_source
+CORE.config_path = Path(sys.argv[1])
+config = read_config({})
+assert config is not None
+CORE.config = config
+generate_cpp_contents(config)
+assert "gdolib" in CORE.platformio_libraries, "secplus_gdo did not register gdolib"
+assert CORE.platformio_libraries["gdolib"].as_lib_dep == (
+    "gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"
+)
+""", str(config_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_yaml_configs_do_not_pin_gdolib():
+    for config_path in [*Path(".").glob("*.yaml"), *Path("packages").glob("*.yaml")]:
+        assert "gdolib=" not in config_path.read_text(encoding="utf-8"), str(config_path)
 
 
 def test_core_package_uses_native_esp32_flash_mode():
