@@ -1,22 +1,95 @@
 from pathlib import Path
-import re
+import json
+import subprocess
+import sys
+
+import pytest
+import yaml
 
 
 SECPLUS_PACKAGE = Path("packages/secplus-gdo.yaml")
-SECPLUS_CONFIG = Path("circuitsetup-secplus-garage-door-opener.yaml")
 CORE_PACKAGE = Path("packages/core-esp32-s3.yaml")
 SECPLUS_INIT = Path("components/secplus_gdo/__init__.py")
 SECPLUS_COMPONENT = Path("components/secplus_gdo/secplus_gdo.cpp")
 GDO_DOOR_COMPONENT = Path("components/secplus_gdo/cover/gdo_door.cpp")
 
 
-def test_secplus_config_owns_pinned_gdolib_version():
-    component_source = SECPLUS_INIT.read_text(encoding="utf-8")
-    config_source = SECPLUS_CONFIG.read_text(encoding="utf-8")
+@pytest.mark.parametrize(
+    ("lib_deps", "expected_lib_deps"),
+    [
+        pytest.param(None, None, id="no-yaml-pin"),
+        pytest.param([], [], id="empty-list"),
+        pytest.param(
+            ["gdolib=https://github.com/CircuitSetup/gdolib#v1.3.3"],
+            ["gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"],
+            id="older-pin",
+        ),
+        pytest.param(
+            ["gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"],
+            ["gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"],
+            id="matching-pin",
+        ),
+        pytest.param(
+            "gdolib=https://github.com/CircuitSetup/gdolib#v1.3.3",
+            "gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0",
+            id="scalar-pin",
+        ),
+        pytest.param("otherlib@1.2.3", "otherlib@1.2.3", id="unrelated-scalar"),
+        pytest.param(
+            ["otherlib@1.2.3", "gdolib=https://github.com/CircuitSetup/gdolib#v1.3.3",
+             "othergdolib=https://example.com/othergdolib#v1.0.0"],
+            ["otherlib@1.2.3", "gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0",
+             "othergdolib=https://example.com/othergdolib#v1.0.0"],
+            id="preserve-unrelated-libraries",
+        ),
+    ],
+)
+def test_secplus_component_owns_gdolib_with_legacy_yaml_dependencies(tmp_path, lib_deps, expected_lib_deps):
+    config_path = tmp_path / "dependency.yaml"
+    config = {
+        "esphome": {"name": "dependency-check"},
+        "esp32": {"board": "esp32-s3-devkitc-1", "framework": {"type": "esp-idf"}},
+        "external_components": [{
+            "source": {"type": "local", "path": SECPLUS_INIT.resolve().parents[1].as_posix()},
+            "components": ["secplus_gdo"],
+        }],
+        "secplus_gdo": {"input_gdo_pin": "GPIO2", "output_gdo_pin": "GPIO1"},
+    }
+    if lib_deps is not None:
+        config["esphome"]["platformio_options"] = {"lib_deps": lib_deps}
+    source = yaml.safe_dump(config)
+    config_path.write_text(source, encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "-c", """
+import sys
+import json
+from pathlib import Path
+from esphome.config import read_config
+from esphome.__main__ import generate_cpp_contents
+from esphome.core import CORE
 
-    dependency = re.search(r'"gdolib=https://github.com/CircuitSetup/gdolib#v\d+\.\d+\.\d+"', config_source)
-    assert dependency is not None
-    assert "cg.add_library" not in component_source
+CORE.config_path = Path(sys.argv[1])
+config = read_config({})
+assert config is not None
+CORE.config = config
+generate_cpp_contents(config)
+assert CORE.config["esphome"]["platformio_options"].get("lib_deps") == json.loads(sys.argv[2])
+assert "gdolib" in CORE.platformio_libraries, "secplus_gdo did not register gdolib"
+assert CORE.platformio_libraries["gdolib"].as_lib_dep == (
+    "gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"
+)
+""", str(config_path), json.dumps(expected_lib_deps)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert config_path.read_text(encoding="utf-8") == source
+
+
+def test_yaml_configs_do_not_pin_gdolib():
+    for config_path in [*Path(".").glob("*.yaml"), *Path("packages").glob("*.yaml")]:
+        assert "gdolib=" not in config_path.read_text(encoding="utf-8"), str(config_path)
 
 
 def test_core_package_uses_native_esp32_flash_mode():

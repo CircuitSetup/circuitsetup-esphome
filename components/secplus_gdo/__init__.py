@@ -19,8 +19,9 @@
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
+import esphome.final_validate as fv
 from esphome import pins
-from esphome.const import CONF_ID, __version__ as ESPHOME_VERSION
+from esphome.const import CONF_ESPHOME, CONF_ID, CONF_PLATFORMIO_OPTIONS, __version__ as ESPHOME_VERSION
 from esphome.core import CORE
 
 DEPENDENCIES = ["esp32", "preferences"]
@@ -31,6 +32,7 @@ SECPLUS_GDO = secplus_gdo_ns.class_("GDOComponent", cg.Component)
 CONF_OUTPUT_GDO = "output_gdo_pin"
 CONF_INPUT_GDO = "input_gdo_pin"
 CONF_SECPLUS_GDO_ID = "secplus_gdo_id"
+GDOLIB_REPOSITORY = "https://github.com/CircuitSetup/gdolib#v1.4.0"
 
 GDO_RESERVED_IDS = frozenset(
     {
@@ -117,9 +119,31 @@ SECPLUS_GDO_CONFIG_SCHEMA = cv.Schema(
 )
 
 
+def _pin_gdolib_dependency(dependency):
+    if dependency.partition("=")[0].strip() == "gdolib":
+        return f"gdolib={GDOLIB_REPOSITORY}"
+    return dependency
+
+
+def _final_validate(_):
+    options = fv.full_config.get()[CONF_ESPHOME][CONF_PLATFORMIO_OPTIONS]
+    if "lib_deps" in options:
+        dependencies = options["lib_deps"]
+        options["lib_deps"] = (
+            _pin_gdolib_dependency(dependencies)
+            if isinstance(dependencies, str)
+            else [_pin_gdolib_dependency(dependency) for dependency in dependencies]
+        )
+
+
+FINAL_VALIDATE_SCHEMA = _final_validate
+
+
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+
+    cg.add_library("gdolib", None, GDOLIB_REPOSITORY)
 
     if (
         CORE.is_esp32
