@@ -60,6 +60,8 @@ The UART pins must be distinct internal ESP32 GPIO numbers. Pin inversion, custo
 
 `secplus_gdo` declares its tested gdolib release in `to_code()` in [`__init__.py`](__init__.py). ESPHome installs that dependency automatically; no YAML `lib_deps` entry is needed.
 
+The current pin includes explicit UART RX pull-up initialization, so cold boots do not rely on GPIO state retained after a software restart. No `on_boot` pull-up workaround is needed.
+
 Legacy `gdolib=...` entries in `esphome.platformio_options.lib_deps` are automatically replaced with the component's tested dependency during validation. Both list and scalar forms are supported, and unrelated libraries are preserved. Your YAML file is not modified, so existing configurations need no manual edit.
 
 For the first build with this dependency handling, ensure the external component cache has refreshed. You can temporarily set `refresh: 0s` on its `external_components` entry, then restore the normal interval after migrating.
