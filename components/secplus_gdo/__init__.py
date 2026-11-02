@@ -32,7 +32,7 @@ SECPLUS_GDO = secplus_gdo_ns.class_("GDOComponent", cg.Component)
 CONF_OUTPUT_GDO = "output_gdo_pin"
 CONF_INPUT_GDO = "input_gdo_pin"
 CONF_SECPLUS_GDO_ID = "secplus_gdo_id"
-GDOLIB_REPOSITORY = "https://github.com/CircuitSetup/gdolib#v1.4.0"
+GDOLIB_REPOSITORY = "https://github.com/CircuitSetup/gdolib#e141d0d8212558a987f2ec284ecb636dafd41714"
 
 GDO_RESERVED_IDS = frozenset(
     {

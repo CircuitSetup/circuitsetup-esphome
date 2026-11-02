@@ -20,25 +20,25 @@ GDO_DOOR_COMPONENT = Path("components/secplus_gdo/cover/gdo_door.cpp")
         pytest.param(None, None, id="no-yaml-pin"),
         pytest.param([], [], id="empty-list"),
         pytest.param(
-            ["gdolib=https://github.com/CircuitSetup/gdolib#v1.3.3"],
             ["gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"],
+            ["gdolib=https://github.com/CircuitSetup/gdolib#e141d0d8212558a987f2ec284ecb636dafd41714"],
             id="older-pin",
         ),
         pytest.param(
-            ["gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"],
-            ["gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"],
+            ["gdolib=https://github.com/CircuitSetup/gdolib#e141d0d8212558a987f2ec284ecb636dafd41714"],
+            ["gdolib=https://github.com/CircuitSetup/gdolib#e141d0d8212558a987f2ec284ecb636dafd41714"],
             id="matching-pin",
         ),
         pytest.param(
             "gdolib=https://github.com/CircuitSetup/gdolib#v1.3.3",
-            "gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0",
+            "gdolib=https://github.com/CircuitSetup/gdolib#e141d0d8212558a987f2ec284ecb636dafd41714",
             id="scalar-pin",
         ),
         pytest.param("otherlib@1.2.3", "otherlib@1.2.3", id="unrelated-scalar"),
         pytest.param(
             ["otherlib@1.2.3", "gdolib=https://github.com/CircuitSetup/gdolib#v1.3.3",
              "othergdolib=https://example.com/othergdolib#v1.0.0"],
-            ["otherlib@1.2.3", "gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0",
+            ["otherlib@1.2.3", "gdolib=https://github.com/CircuitSetup/gdolib#e141d0d8212558a987f2ec284ecb636dafd41714",
              "othergdolib=https://example.com/othergdolib#v1.0.0"],
             id="preserve-unrelated-libraries",
         ),
@@ -76,7 +76,7 @@ generate_cpp_contents(config)
 assert CORE.config["esphome"]["platformio_options"].get("lib_deps") == json.loads(sys.argv[2])
 assert "gdolib" in CORE.platformio_libraries, "secplus_gdo did not register gdolib"
 assert CORE.platformio_libraries["gdolib"].as_lib_dep == (
-    "gdolib=https://github.com/CircuitSetup/gdolib#v1.4.0"
+    "gdolib=https://github.com/CircuitSetup/gdolib#e141d0d8212558a987f2ec284ecb636dafd41714"
 )
 """, str(config_path), json.dumps(expected_lib_deps)],
         capture_output=True,
