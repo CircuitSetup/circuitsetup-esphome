@@ -58,7 +58,7 @@ The UART pins must be distinct internal ESP32 GPIO numbers. Pin inversion, custo
 
 ## gdolib Dependency
 
-`secplus_gdo` declares its tested gdolib version in `to_code()` in [`__init__.py`](__init__.py). ESPHome installs that dependency automatically; no YAML `lib_deps` entry is needed.
+`secplus_gdo` declares its tested gdolib release in `to_code()` in [`__init__.py`](__init__.py). ESPHome installs that dependency automatically; no YAML `lib_deps` entry is needed.
 
 The current pin includes explicit UART RX pull-up initialization, so cold boots do not rely on GPIO state retained after a software restart. No `on_boot` pull-up workaround is needed.
 
@@ -66,7 +66,7 @@ Legacy `gdolib=...` entries in `esphome.platformio_options.lib_deps` are automat
 
 For the first build with this dependency handling, ensure the external component cache has refreshed. You can temporarily set `refresh: 0s` on its `external_components` entry, then restore the normal interval after migrating.
 
-Maintainers must update the tested Git tag or exact commit in `GDOLIB_REPOSITORY` in `__init__.py` when adopting a new gdolib version. After ESPHome refreshes the external component, its next build uses the pin from that component. Publishing a gdolib release alone does not change the pin. Remote components have a default refresh interval of one day; see [ESPHome external-component refresh](https://esphome.io/components/external_components/#refresh).
+Maintainers must update the Git tag in `GDOLIB_REPOSITORY` in `__init__.py` when adopting a new gdolib release. After ESPHome refreshes the external component, its next build uses the pin from that component. Publishing a gdolib release alone does not change the pin. Remote components have a default refresh interval of one day; see [ESPHome external-component refresh](https://esphome.io/components/external_components/#refresh).
 
 The standalone component supports ESPHome `2026.2.0+`; the full CircuitSetup configuration requires `2026.6.0+`.
 
