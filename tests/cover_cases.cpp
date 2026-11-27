@@ -163,7 +163,22 @@ int main() {
         door.fire("open_door");
         check(toggles == 1, "Stop or sync loss cancels delayed toggle-only commands");
     }
+    {
+        Door door(GDO_DOOR_STATE_OPENING, 0.4f);
+        door.set_toggle_only(true);
+        door.state_callback = [&]() { door.control(open); };
+        door.set_state(GDO_DOOR_STATE_STOPPED, 0.4f);
+        check(toggles == 1 && door.timers.count("stop_door") && door.timers.count("open_door"),
+              "an idle automation can reopen using the newly reported stopped state");
+    }
 #ifdef USE_MQTT
+    {
+        Door door(GDO_DOOR_STATE_UNKNOWN);
+        int before = door.publications;
+        door.set_state(GDO_DOOR_STATE_CLOSED, 0.0f);
+        door.set_state(GDO_DOOR_STATE_OPEN, 1.0f);
+        check(door.publications == before + 2, "MQTT publishes terminal state changes while idle");
+    }
     {
         Door door(GDO_DOOR_STATE_OPENING, 0.2f);
         door.set_state(GDO_DOOR_STATE_OPENING, 0.3f);
