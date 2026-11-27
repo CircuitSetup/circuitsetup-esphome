@@ -94,8 +94,8 @@ void GDODoor::set_state(gdo_door_state_t state, float position) {
     }
 #endif
 
-    this->publish_state(false);
     this->state_ = state;
+    this->publish_state(false);
 }
 
 bool GDODoor::send_command_(const char *action, std::function<esp_err_t()> &&command) {

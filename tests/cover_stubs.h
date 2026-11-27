@@ -67,7 +67,11 @@ class Cover { public:
     float position = COVER_OPEN;
     CoverOperation current_operation = COVER_OPERATION_IDLE;
     int publications = 0;
-    void publish_state(bool) { ++publications; }
+    std::function<void()> state_callback;
+    void publish_state(bool) {
+        ++publications;
+        if (state_callback) state_callback();
+    }
 };
 }
 namespace secplus_gdo { class GDOComponent { public: void notify_cover_command() {} }; }
